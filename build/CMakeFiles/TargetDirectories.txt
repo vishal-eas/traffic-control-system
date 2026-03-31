@@ -1,0 +1,5 @@
+/home/vishal/projects/traffic-control-system/build/CMakeFiles/common.dir
+/home/vishal/projects/traffic-control-system/build/CMakeFiles/infrastructure_sim.dir
+/home/vishal/projects/traffic-control-system/build/CMakeFiles/vehicle_sim.dir
+/home/vishal/projects/traffic-control-system/build/CMakeFiles/edit_cache.dir
+/home/vishal/projects/traffic-control-system/build/CMakeFiles/rebuild_cache.dir
