@@ -7,6 +7,7 @@ namespace common {
         detailed_pos.road_row = -1;
         detailed_pos.road_col = -1;
         detailed_pos.slot = -1;
+        detailed_pos.direction = -1;
         detailed_pos.at_intersection = true;
     }
 
@@ -39,6 +40,7 @@ namespace common {
         detailed_pos.road_row = -1;
         detailed_pos.road_col = -1;
         detailed_pos.slot = -1;
+        detailed_pos.direction = -1;
     }
 
     Vehicle::DetailedPosition Vehicle::getDetailedPosition() const {

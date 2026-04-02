@@ -1,2 +1,0 @@
-/usr/bin/ar qc libcommon.a CMakeFiles/common.dir/src/common/Grid.cpp.o CMakeFiles/common.dir/src/common/Intersection.cpp.o CMakeFiles/common.dir/src/common/Road.cpp.o CMakeFiles/common.dir/src/common/TrafficLight.cpp.o CMakeFiles/common.dir/src/common/Vehicle.cpp.o
-/usr/bin/ranlib libcommon.a

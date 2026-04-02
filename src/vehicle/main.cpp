@@ -4,18 +4,26 @@
 #include "infrastructure/InfrastructureAgent.h"
 
 void print_position(const common::Point& position) {
-    std::cout << "(" << position.x << ", " << position.y << ")";
+    // Print named square nodes
+    if (position == common::SQUARE_A) { std::cout << "A"; return; }
+    if (position == common::SQUARE_B) { std::cout << "B"; return; }
+    if (position == common::SQUARE_C) { std::cout << "C"; return; }
+    if (position == common::SQUARE_D) { std::cout << "D"; return; }
+    std::cout << "(" << position.x << "," << position.y << ")";
 }
 
-void print_vehicle_positions(const vehicle::VehicleAgent& agent) {
-    auto& vehicles = agent.getVehicles();
-    for (const auto& kv : vehicles) {
-        const auto& vehicle = kv.second;
-        std::cout << "V" << vehicle.getId() << ": ";
+void print_vehicle_status(const common::Vehicle& vehicle) {
+    auto pos = vehicle.getDetailedPosition();
+    std::cout << "V" << vehicle.getId() << ": ";
+    if (pos.at_intersection) {
         print_position(vehicle.getPosition());
-        std::cout << " ";
+    } else {
+        std::cout << (pos.road_type == 0 ? "H" : "V")
+                  << "[" << pos.road_row << "," << pos.road_col << "]"
+                  << (pos.direction == 0 ? "F" : "B")
+                  << " slot=" << pos.slot;
     }
-    std::cout << std::endl;
+    std::cout << " ";
 }
 
 int main() {
@@ -23,42 +31,72 @@ int main() {
     vehicle::VehicleAgent vehicle_agent(grid);
     infrastructure::InfrastructureAgent infra_agent(grid);
 
-    // Create multiple vehicles
-    vehicle_agent.addVehicle(1, {0, 0});
-    vehicle_agent.addVehicle(2, {0, 0});
-    vehicle_agent.addVehicle(3, {0, 0});
+    // Create vehicles starting at square node A
+    vehicle_agent.addVehicle(1, common::SQUARE_A);
+    vehicle_agent.addVehicle(2, common::SQUARE_A);
+    vehicle_agent.addVehicle(3, common::SQUARE_A);
 
-    // Set routes for vehicles
-    common::Vehicle* vehicle_ptr1 = vehicle_agent.getVehicleById(1);
-    if (vehicle_ptr1) {
-        std::vector<common::Point> route = {{0, 1}, {0, 2}, {1, 2}, {2, 2}};
-        vehicle_ptr1->setRoute(route);
+    // Hardcoded destination goals (square nodes only).
+    // VehicleAgent computes shortest waypoint paths between these goals.
+    common::Vehicle* v1 = vehicle_agent.getVehicleById(1);
+    if (v1) {
+        // A -> B -> C -> D -> A
+        std::vector<common::Point> route = {
+            common::SQUARE_B,
+            common::SQUARE_C,
+            common::SQUARE_D,
+            common::SQUARE_A
+        };
+        v1->setRoute(route);
     }
-    
-    common::Vehicle* vehicle_ptr2 = vehicle_agent.getVehicleById(2);
-    if (vehicle_ptr2) {
-        std::vector<common::Point> route = {{0, 1}, {0, 2}, {1, 2}, {2, 2}};
-        vehicle_ptr2->setRoute(route);
+
+    common::Vehicle* v2 = vehicle_agent.getVehicleById(2);
+    if (v2) {
+        // A -> C -> B -> D -> A
+        std::vector<common::Point> route = {
+            common::SQUARE_C,
+            common::SQUARE_B,
+            common::SQUARE_D,
+            common::SQUARE_A
+        };
+        v2->setRoute(route);
     }
-    
-    common::Vehicle* vehicle_ptr3 = vehicle_agent.getVehicleById(3);
-    if (vehicle_ptr3) {
-        std::vector<common::Point> route = {{0, 1}, {0, 2}, {1, 2}, {2, 2}};
-        vehicle_ptr3->setRoute(route);
+
+    common::Vehicle* v3 = vehicle_agent.getVehicleById(3);
+    if (v3) {
+        // A -> D -> B -> C -> A
+        std::vector<common::Point> route = {
+            common::SQUARE_D,
+            common::SQUARE_B,
+            common::SQUARE_C,
+            common::SQUARE_A
+        };
+        v3->setRoute(route);
     }
 
     // Simulation loop
-    for (int time_step = 0; time_step < 70; ++time_step) {
-        if (time_step <= 5 || (time_step >= 30 && time_step <= 40) || time_step >= 65) {
-            std::cout << "Time Step " << time_step << ": ";
-            print_vehicle_positions(vehicle_agent);
+    int total_steps = 1500;
+    for (int t = 0; t < total_steps; ++t) {
+        std::cout << "T=" << t << ": ";
+        for (const auto& kv : grid.getVehicles()) {
+            print_vehicle_status(kv.second);
         }
-        
-        // Update infrastructure first
+        std::cout << std::endl;
+
+        // Update infrastructure first, then vehicles
         infra_agent.step();
-        
-        // Then update vehicles
         vehicle_agent.step();
+    }
+
+    std::cout << "\nSimulation complete (" << total_steps << " time steps)." << std::endl;
+
+    // Print final positions
+    std::cout << "Final positions:" << std::endl;
+    for (const auto& kv : grid.getVehicles()) {
+        std::cout << "  ";
+        print_vehicle_status(kv.second);
+        auto route = kv.second.getRoute();
+        std::cout << " (remaining waypoints: " << route.size() << ")" << std::endl;
     }
 
     return 0;

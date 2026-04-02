@@ -23,6 +23,7 @@ namespace common {
             int road_row;               // Row index of road
             int road_col;               // Column index of road
             int slot;                   // Which slot on road (0-29)
+            int direction;              // 0=FORWARD, 1=BACKWARD (-1 if at intersection)
             bool at_intersection;       // True if at intersection, false if on road
         };
         

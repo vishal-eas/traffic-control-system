@@ -1,1 +1,0 @@
-/usr/bin/c++ -Wl,--dependency-file=CMakeFiles/infrastructure_sim.dir/link.d CMakeFiles/infrastructure_sim.dir/src/infrastructure/main.cpp.o CMakeFiles/infrastructure_sim.dir/src/infrastructure/InfrastructureAgent.cpp.o -o infrastructure_sim  libcommon.a
