@@ -1,7 +1,7 @@
 #include "infrastructure/InfrastructureAgent.h"
 
 namespace infrastructure {
-    InfrastructureAgent::InfrastructureAgent(common::Grid& grid) 
+    InfrastructureAgent::InfrastructureAgent(common::Grid& grid)
         : grid(grid), time_step(0) {}
 
     void InfrastructureAgent::updateLights() {
@@ -10,32 +10,30 @@ namespace infrastructure {
 
     void InfrastructureAgent::step() {
         updateLights();
-        time_step++;
+        ++time_step;
     }
 
     void InfrastructureAgent::simpleCycleStrategy() {
-        // Agent reads Grid state and makes traffic light decisions
-        // Simple strategy: cycle through enabled light phases for all intersections
-        
-        for (int i = 0; i < 3; ++i) {
-            for (int j = 0; j < 3; ++j) {
-                common::Intersection& intersection = grid.getIntersection(i, j);
-                
-                // Read state: find enabled lights
+        // Read the shared Grid state and rotate the green light over the
+        // directions that are actually enabled at each intersection.
+        for (int row = 0; row < 3; ++row) {
+            for (int col = 0; col < 3; ++col) {
+                common::Intersection& intersection = grid.getIntersection(row, col);
+
                 std::vector<int> enabled_lights;
-                for (int k = 0; k < 4; ++k) {
-                    if (intersection.isLightEnabled(k)) {
-                        enabled_lights.push_back(k);
+                for (int light = 0; light < 4; ++light) {
+                    if (intersection.isLightEnabled(light)) {
+                        enabled_lights.push_back(light);
                     }
                 }
-                
-                if (!enabled_lights.empty()) {
-                    // Agent decision: rotate which light is green
-                    int cycle_index = (time_step / 2) % enabled_lights.size();
-                    
-                    // Mutate state: set green light using Grid interface
-                    grid.setLight(i, j, enabled_lights[cycle_index], common::LightState::GREEN);
+
+                if (enabled_lights.empty()) {
+                    continue;
                 }
+
+                const int phase_index = (time_step / 2) % static_cast<int>(enabled_lights.size());
+                const int green_light = enabled_lights[phase_index];
+                grid.setLight(row, col, green_light, common::LightState::GREEN);
             }
         }
     }
