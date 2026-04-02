@@ -30,4 +30,3 @@ add_executable(vehicle_sim
 )
 target_include_directories(vehicle_sim PUBLIC include)
 target_link_libraries(vehicle_sim common)
-target_link_libraries(vehicle_sim common)

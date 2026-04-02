@@ -1,1 +1,0 @@
-/usr/bin/c++ -Wl,--dependency-file=CMakeFiles/vehicle_sim.dir/link.d CMakeFiles/vehicle_sim.dir/src/vehicle/main.cpp.o CMakeFiles/vehicle_sim.dir/src/vehicle/VehicleAgent.cpp.o CMakeFiles/vehicle_sim.dir/src/infrastructure/InfrastructureAgent.cpp.o -o vehicle_sim  libcommon.a libcommon.a

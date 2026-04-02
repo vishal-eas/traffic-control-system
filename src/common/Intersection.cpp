@@ -1,7 +1,7 @@
 #include "common/Intersection.h"
 
 namespace common {
-    Intersection::Intersection() : green_light_index(-1) {
+    Intersection::Intersection() : green_light_index(-1), occupied_this_step(false) {
         for (auto& light : traffic_lights) {
             light.setState(LightState::RED);
         }
@@ -58,5 +58,17 @@ namespace common {
 
     const std::array<common::TrafficLight,4>& Intersection::getTrafficLights() const {
         return traffic_lights;
+    }
+
+    bool Intersection::isOccupiedThisStep() const {
+        return occupied_this_step;
+    }
+
+    void Intersection::setOccupiedThisStep(bool occupied) {
+        occupied_this_step = occupied;
+    }
+
+    void Intersection::resetStepOccupancy() {
+        occupied_this_step = false;
     }
 }

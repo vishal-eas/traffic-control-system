@@ -1,0 +1,28 @@
+# Build output (out-of-source CMake build directory)
+build/
+
+# In-source CMake artifacts (if generated)
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+Makefile
+compile_commands.json
+install_manifest.txt
+
+# Compiled binaries and libraries
+*.o
+*.obj
+*.a
+*.so
+*.dylib
+*.dll
+*.exe
+
+# Runtime logs and temp outputs
+*.log
+
+# Local workspace metadata
+chat.json
+
+# macOS metadata
+.DS_Store

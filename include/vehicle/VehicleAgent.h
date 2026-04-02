@@ -2,6 +2,7 @@
 #define VEHICLE_AGENT_H
 
 #include <vector>
+#include <unordered_map>
 #include "common/Vehicle.h"
 #include "common/Grid.h"
 
@@ -26,10 +27,25 @@ namespace vehicle {
     private:
         common::Grid& grid;
         int time_step;
+        // Incoming heading at the current intersection for each vehicle.
+        // -1 = unknown, 0 = north, 1 = east, 2 = south, 3 = west.
+        std::unordered_map<int, int> intersection_incoming_heading;
+        // One-step restriction after returning from a square node:
+        // forbid taking this heading for the first exit from the corner intersection.
+        std::unordered_map<int, int> post_square_forbidden_heading;
         
         // Decision making
         void updateRoutePlanning();
         void updateMovement();
+
+        std::vector<common::Point> computeShortestPathNoUTurn(
+            int vehicle_id,
+            const common::Point& start,
+            const common::Point& goal) const;
+        int getIncomingHeadingAtIntersection(int vehicle_id) const;
+        void setIncomingHeadingAtIntersection(int vehicle_id, int heading);
+        int getPostSquareForbiddenHeading(int vehicle_id) const;
+        void clearPostSquareForbiddenHeading(int vehicle_id);
     };
 }
 
