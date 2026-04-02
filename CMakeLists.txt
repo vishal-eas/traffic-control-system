@@ -35,7 +35,7 @@ target_link_libraries(vehicle_sim common)
 enable_testing()
 
 add_executable(test_infrastructure
-    test_infrastructure.cpp
+    tests/test_infrastructure.cpp
     src/infrastructure/InfrastructureAgent.cpp
 )
 target_include_directories(test_infrastructure PUBLIC include)
@@ -43,7 +43,7 @@ target_link_libraries(test_infrastructure common)
 add_test(NAME infrastructure_agent_test COMMAND test_infrastructure)
 
 add_executable(test_vehicle_agent
-    test_vehicle_agent.cpp
+    tests/test_vehicle_agent.cpp
     src/vehicle/VehicleAgent.cpp
     src/infrastructure/InfrastructureAgent.cpp
 )
