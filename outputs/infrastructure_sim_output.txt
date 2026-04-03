@@ -1,0 +1,132 @@
+=== Traffic Light Topology ===
+Enabled lights per intersection:
+  (0,0): East South West 
+  (0,1): East South West 
+  (0,2): North South West 
+  (1,0): North East South 
+  (1,1): North East South West 
+  (1,2): North South West 
+  (2,0): North East South 
+  (2,1): North East West 
+  (2,2): North East West 
+
+Time Step 0
+Intersection (0,0):
+  Light 0: DISABLED
+  East: GREEN
+  South: RED
+  West: RED
+Intersection (1,1):
+  North: GREEN
+  East: RED
+  South: RED
+  West: RED
+
+Time Step 1
+Intersection (0,0):
+  Light 0: DISABLED
+  East: GREEN
+  South: RED
+  West: RED
+Intersection (1,1):
+  North: GREEN
+  East: RED
+  South: RED
+  West: RED
+
+Time Step 2
+Intersection (0,0):
+  Light 0: DISABLED
+  East: RED
+  South: GREEN
+  West: RED
+Intersection (1,1):
+  North: RED
+  East: GREEN
+  South: RED
+  West: RED
+
+Time Step 3
+Intersection (0,0):
+  Light 0: DISABLED
+  East: RED
+  South: GREEN
+  West: RED
+Intersection (1,1):
+  North: RED
+  East: GREEN
+  South: RED
+  West: RED
+
+Time Step 4
+Intersection (0,0):
+  Light 0: DISABLED
+  East: RED
+  South: RED
+  West: GREEN
+Intersection (1,1):
+  North: RED
+  East: RED
+  South: GREEN
+  West: RED
+
+Time Step 5
+Intersection (0,0):
+  Light 0: DISABLED
+  East: RED
+  South: RED
+  West: GREEN
+Intersection (1,1):
+  North: RED
+  East: RED
+  South: GREEN
+  West: RED
+
+Time Step 6
+Intersection (0,0):
+  Light 0: DISABLED
+  East: GREEN
+  South: RED
+  West: RED
+Intersection (1,1):
+  North: RED
+  East: RED
+  South: RED
+  West: GREEN
+
+Time Step 7
+Intersection (0,0):
+  Light 0: DISABLED
+  East: GREEN
+  South: RED
+  West: RED
+Intersection (1,1):
+  North: RED
+  East: RED
+  South: RED
+  West: GREEN
+
+Time Step 8
+Intersection (0,0):
+  Light 0: DISABLED
+  East: RED
+  South: GREEN
+  West: RED
+Intersection (1,1):
+  North: GREEN
+  East: RED
+  South: RED
+  West: RED
+
+Time Step 9
+Intersection (0,0):
+  Light 0: DISABLED
+  East: RED
+  South: GREEN
+  West: RED
+Intersection (1,1):
+  North: GREEN
+  East: RED
+  South: RED
+  West: RED
+
