@@ -1,0 +1,194 @@
+Log File Output Report — Traffic Control System
+================================================
+
+The simulation produces two log files in the outputs/ directory: one from the
+infrastructure agent and one from the vehicle agent.
+
+
+=======================================================================
+1. infrastructure_sim_output.txt — Traffic Light Simulation
+=======================================================================
+
+This log documents the state of the traffic light controller over 10 time steps
+across a 3x3 grid of intersections (rows 0-2, columns 0-2).
+
+-----------------------------------------------------------------------
+Structure
+-----------------------------------------------------------------------
+
+Header — Traffic Light Topology
+--------------------------------
+  === Traffic Light Topology ===
+  Enabled lights per intersection:
+    (0,0): East South West
+    ...
+
+Each intersection can control up to 4 directional lights:
+  North (0), East (1), South (2), West (3).
+
+Edge intersections disable lights that face outside the grid, except at corners
+where square node entry/exit points exist (A, B, C, D). For example:
+  - (0,0) has no North light (top row), but does have East, South, and West
+    (West leads to Square A).
+  - (1,1) is the center intersection and has all four directions enabled.
+
+Per-Step Output
+---------------
+  Time Step 0
+  Intersection (0,0):
+    Light 0: DISABLED
+    East: GREEN
+    South: RED
+    West: RED
+
+Each time step prints the state of two selected intersections: (0,0) and (1,1).
+Each enabled directional light is shown as GREEN or RED; disabled lights are
+shown as DISABLED.
+
+-----------------------------------------------------------------------
+Light Cycling Logic
+-----------------------------------------------------------------------
+
+The InfrastructureAgent uses a simple round-robin cycle: at each intersection,
+only enabled lights are considered, and exactly one is GREEN at a time. The
+green light advances every 2 time steps:
+
+  phase_index = (time_step / 2) % num_enabled_lights
+
+Example: (0,0) has 3 enabled lights (East, South, West):
+  Time Steps 0-1  -> East  GREEN
+  Time Steps 2-3  -> South GREEN
+  Time Steps 4-5  -> West  GREEN
+  Time Steps 6-7  -> East  GREEN (repeats)
+
+Example: (1,1) has 4 enabled lights (N, E, S, W):
+  Time Steps 0-1  -> North GREEN
+  Time Steps 2-3  -> East  GREEN
+  Time Steps 4-5  -> South GREEN
+  Time Steps 6-7  -> West  GREEN
+  Time Steps 8-9  -> North GREEN (repeats)
+
+
+=======================================================================
+2. vehicle_sim_output.txt — Vehicle Movement Simulation
+=======================================================================
+
+This log tracks the positions of 3 vehicles (V1, V2, V3) over 1,500 time steps
+as they navigate the 3x3 grid following assigned routes.
+
+-----------------------------------------------------------------------
+Format
+-----------------------------------------------------------------------
+
+Each line follows the pattern:
+  T=<time>: V<id>: <position_string>  V<id>: <position_string>  ...
+
+Position string encoding:
+
+  Token                  Meaning
+  -------                -------
+  A / B / C / D          Vehicle is at a corner square node (origin/destination)
+  (row,col)              Vehicle is waiting at an intersection
+  H[row,col]F slot=N     Horizontal road at [row,col], travelling Forward
+                           (eastbound), in road slot N
+  H[row,col]B slot=N     Horizontal road at [row,col], travelling Backward
+                           (westbound), in slot N
+  V[row,col]F slot=N     Vertical road at [row,col], travelling Forward
+                           (southbound), in slot N
+  V[row,col]B slot=N     Vertical road at [row,col], travelling Backward
+                           (northbound), in slot N
+
+  H = Horizontal road segment between column-adjacent intersections
+  V = Vertical road segment between row-adjacent intersections
+  F = Forward direction (East for horizontal, South for vertical)
+  B = Backward direction (West for horizontal, North for vertical)
+  slot=N = Position within the road segment
+           (0 = near origin intersection, 29 = near destination intersection)
+           Each road has 30 slots.
+
+-----------------------------------------------------------------------
+Grid Layout and Square Nodes
+-----------------------------------------------------------------------
+
+The grid is a 3x3 matrix of intersections (row,col). Four square nodes serve as
+vehicle entry/exit points at the corners:
+
+  A — West of intersection (0,0)  — top-left entry/exit
+  B — South of intersection (2,0) — bottom-left entry/exit
+  C — East of intersection (2,2)  — bottom-right entry/exit
+  D — North of intersection (0,2) — top-right entry/exit
+
+-----------------------------------------------------------------------
+Vehicle Routes
+-----------------------------------------------------------------------
+
+All three vehicles start at Square A. Their assigned routes cycle through the
+square nodes:
+
+  V1: A -> B -> C -> D -> A  (clockwise perimeter)
+  V2: A -> C -> B -> D -> A  (diagonal cross-pattern)
+  V3: A -> D -> B -> C -> A  (counter-clockwise then cross)
+
+The vehicle agent computes BFS shortest paths between waypoints, enforcing a
+no-U-turn rule at intersections.
+
+-----------------------------------------------------------------------
+Example Walkthrough (V3, T=0 to T=37)
+-----------------------------------------------------------------------
+
+  T=0:  V3: A               <- at Square A (start)
+  T=1:  V3: (0,0)           <- arrived at intersection (0,0)
+  T=2:  V3: H[0,0]F slot=0  <- entered horizontal road row=0,col=0,
+                                eastbound, slot 0
+  T=3:  V3: H[0,0]F slot=1  <- advanced one slot
+  ...
+  T=31: V3: H[0,0]F slot=29 <- near end of road segment
+  T=32: V3: (0,1)           <- crossed into intersection (0,1)
+  T=37: V3: H[0,1]F slot=0  <- entered next road segment
+
+V3's first goal from A is Square D (north of (0,2)). The shortest path heads
+East along row 0: A -> (0,0) -> road -> (0,1) -> road -> (0,2) -> D.
+
+-----------------------------------------------------------------------
+Traffic Light Interaction
+-----------------------------------------------------------------------
+
+Vehicles wait at intersections when the relevant traffic light is RED. This is
+visible in the log as a vehicle remaining at (row,col) for multiple consecutive
+time steps before entering a road. For example:
+
+  T=3:  V3: (0,0)   <- waiting (light not yet green for its direction)
+  T=4:  V3: (0,0)
+  T=5:  V3: (0,0)
+  ...
+
+Additionally, the intersection crossing constraint allows at most one vehicle
+per intersection per time step, so vehicles can also wait due to congestion.
+
+-----------------------------------------------------------------------
+Special Single-Step Appearances
+-----------------------------------------------------------------------
+
+Occasionally a vehicle shows a square node label (e.g. D) for exactly one time
+step before moving on. This indicates the vehicle momentarily passed through the
+square node before immediately continuing toward the next waypoint.
+
+
+=======================================================================
+Summary
+=======================================================================
+
+  Log File                      Generated By                  Content
+  --------                      ------------                  -------
+  infrastructure_sim_output.txt src/infrastructure/main.cpp   Traffic light states
+                                                              (GREEN/RED) at 2
+                                                              intersections over
+                                                              10 steps
+  vehicle_sim_output.txt        src/vehicle/main.cpp          Per-tick position of
+                                                              3 vehicles navigating
+                                                              a 3x3 grid over
+                                                              1,500 steps
+
+The two simulations share the same Grid and InfrastructureAgent, so traffic
+lights influence vehicle movement in vehicle_sim_output.txt — vehicles wait at
+intersections until the light for their direction turns GREEN.
