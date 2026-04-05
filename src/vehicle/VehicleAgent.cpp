@@ -119,8 +119,8 @@ namespace {
 }
 
 namespace vehicle {
-    VehicleAgent::VehicleAgent(common::Grid& grid)
-        : grid(grid), time_step(0) {}
+    VehicleAgent::VehicleAgent(common::Grid& grid, common::SimulationStats* stats)
+        : grid(grid), stats_(stats), time_step(0) {}
 
     void VehicleAgent::addVehicle(int vehicle_id, common::Point start_pos) {
         common::Vehicle vehicle(vehicle_id, start_pos);
@@ -137,6 +137,12 @@ namespace vehicle {
     void VehicleAgent::step() {
         updateVehicles();
         time_step++;
+        if (stats_) {
+            // Tick time and scan for any slot collisions after all moves.
+            stats_->tick();
+            int c = grid.detectCollisions();
+            for (int i = 0; i < c; ++i) stats_->recordCollision();
+        }
     }
 
     common::Vehicle* VehicleAgent::getVehicleById(int vehicle_id) {
@@ -398,11 +404,22 @@ namespace vehicle {
                             } else {
                                 clearPostSquareForbiddenHeading(vehicle_id);
                             }
+                            // Post-move violation check (should always be green — catches bugs).
+                            if (stats_ &&
+                                grid.getLight(current.x, current.y, light_index) != common::LightState::GREEN) {
+                                stats_->recordRedLightViolation();
+                            }
                             moved_this_step.insert(vehicle_id);
                             auto route = vehicle_ptr->getRoute();
                             if (!route.empty()) {
                                 route.erase(route.begin());
                                 grid.setRoute(vehicle_id, route);
+                                // Tour complete: vehicle reached SQUARE_A with empty route.
+                                if (stats_ && next == common::SQUARE_A && route.empty() &&
+                                    tours_recorded_.find(vehicle_id) == tours_recorded_.end()) {
+                                    stats_->recordCompletedTour();
+                                    tours_recorded_.insert(vehicle_id);
+                                }
                             }
                         }
                     }
@@ -467,8 +484,18 @@ namespace vehicle {
                             grid.markIntersectionOccupied(current.x, current.y);
                             clearPostSquareForbiddenHeading(vehicle_id);
                             moved_this_step.insert(vehicle_id);
+                            // Post-move sanity check: light must still be green (single-threaded,
+                            // so this always holds — catches any future logic bugs).
+                            if (stats_ &&
+                                grid.getLight(current.x, current.y, light_index) != common::LightState::GREEN) {
+                                stats_->recordRedLightViolation();
+                            }
                         }
                     }
+                } else if (stats_) {
+                    // Vehicle is blocked by a red light — not a violation, just waiting.
+                    // No action needed; recorded here as a comment for clarity.
+                    (void)0;
                 }
             }
         }

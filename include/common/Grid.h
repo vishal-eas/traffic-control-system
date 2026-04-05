@@ -54,6 +54,11 @@ namespace common {
         bool isIntersectionOccupiedThisStep(int row, int col) const;
         void markIntersectionOccupied(int row, int col);
 
+        // Collision detection: scans all road slots and cross-checks against the
+        // vehicle registry. Returns number of (road, lane, slot) positions claimed
+        // by more than one vehicle — should be 0 if movement logic is correct.
+        int detectCollisions() const;
+
     private:
         // 3x3 grid of intersections
         std::array<std::array<common::Intersection,3>,3> intersections;

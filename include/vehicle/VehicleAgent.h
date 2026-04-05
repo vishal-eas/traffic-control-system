@@ -3,13 +3,16 @@
 
 #include <vector>
 #include <unordered_map>
+#include <unordered_set>
 #include "common/Vehicle.h"
 #include "common/Grid.h"
+#include "common/SimulationStats.h"
 
 namespace vehicle {
     class VehicleAgent {
     public:
-        VehicleAgent(common::Grid& grid);
+        // stats is optional; pass nullptr (default) to disable stats recording.
+        VehicleAgent(common::Grid& grid, common::SimulationStats* stats = nullptr);
         
         // Create vehicles in the system
         void addVehicle(int vehicle_id, common::Point start_pos);
@@ -26,6 +29,7 @@ namespace vehicle {
 
     private:
         common::Grid& grid;
+        common::SimulationStats* stats_;  // may be nullptr
         int time_step;
         // Incoming heading at the current intersection for each vehicle.
         // -1 = unknown, 0 = north, 1 = east, 2 = south, 3 = west.
@@ -33,6 +37,8 @@ namespace vehicle {
         // One-step restriction after returning from a square node:
         // forbid taking this heading for the first exit from the corner intersection.
         std::unordered_map<int, int> post_square_forbidden_heading;
+        // Vehicles whose completed tour has already been recorded (avoid double-count).
+        std::unordered_set<int> tours_recorded_;
         
         // Decision making
         void updateRoutePlanning();
