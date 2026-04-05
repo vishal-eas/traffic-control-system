@@ -1,4 +1,5 @@
 #include "common/Grid.h"
+#include <unordered_map>
 
 namespace common {
     Grid::Grid() {
@@ -254,5 +255,31 @@ namespace common {
         if (row >= 0 && row < 3 && col >= 0 && col < 3) {
             intersections[row][col].setOccupiedThisStep(true);
         }
+    }
+
+    int Grid::detectCollisions() const {
+        // Build a map from (road_type, row, col, direction, slot) -> vehicle count.
+        // Any entry with count > 1 is a collision.
+        // Key packing: road_type*10000000 + row*1000000 + col*100000 + dir*10000 + slot
+        std::unordered_map<long long, int> slot_occupancy;
+
+        for (const auto& kv : vehicles) {
+            const common::Vehicle& v = kv.second;
+            auto pos = v.getDetailedPosition();
+            if (pos.at_intersection || pos.road_type < 0 || pos.slot < 0) continue;
+
+            long long key = static_cast<long long>(pos.road_type) * 10000000LL
+                          + pos.road_row  * 1000000LL
+                          + pos.road_col  * 100000LL
+                          + pos.direction * 10000LL
+                          + pos.slot;
+            slot_occupancy[key]++;
+        }
+
+        int collisions = 0;
+        for (const auto& entry : slot_occupancy) {
+            if (entry.second > 1) collisions += (entry.second - 1);
+        }
+        return collisions;
     }
 }  // namespace common

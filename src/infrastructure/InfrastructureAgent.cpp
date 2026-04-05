@@ -2,10 +2,15 @@
 
 namespace infrastructure {
     InfrastructureAgent::InfrastructureAgent(common::Grid& grid)
-        : grid(grid), time_step(0) {}
+        : grid(grid), time_step(0) {
+        // Initialize all red streaks to 0
+        for (auto& row : red_streak) {
+            row.fill(0);
+        }
+    }
 
     void InfrastructureAgent::updateLights() {
-        simpleCycleStrategy();
+        congestionAwareStrategy();
     }
 
     void InfrastructureAgent::step() {
@@ -13,9 +18,147 @@ namespace infrastructure {
         ++time_step;
     }
 
+    int InfrastructureAgent::countApproachingVehicles(int row, int col, int direction) const {
+        // Count vehicles on the road segment approaching this intersection
+        // from the given direction.
+        //
+        // Direction 0 (North): vehicles coming from north = on vertical road above,
+        //   traveling FORWARD (southbound), approaching slot 29
+        // Direction 1 (East): vehicles coming from east = on horizontal road to the right,
+        //   traveling BACKWARD (westbound), approaching slot 29
+        // Direction 2 (South): vehicles coming from south = on vertical road below,
+        //   traveling BACKWARD (northbound), approaching slot 29
+        // Direction 3 (West): vehicles coming from west = on horizontal road to the left,
+        //   traveling FORWARD (eastbound), approaching slot 29
+
+        int count = 0;
+        const common::Road* road = nullptr;
+        common::Direction dir;
+
+        switch (direction) {
+            case 0: // North approach: vertical_roads[row-1][col], FORWARD
+                if (row > 0) {
+                    road = grid.getRoad(1, row - 1, col);
+                    dir = common::Direction::FORWARD;
+                }
+                break;
+            case 1: // East approach: horizontal_roads[row][col], BACKWARD
+                if (col < 2) {
+                    road = grid.getRoad(0, row, col);
+                    dir = common::Direction::BACKWARD;
+                }
+                break;
+            case 2: // South approach: vertical_roads[row][col], BACKWARD
+                if (row < 2) {
+                    road = grid.getRoad(1, row, col);
+                    dir = common::Direction::BACKWARD;
+                }
+                break;
+            case 3: // West approach: horizontal_roads[row][col-1], FORWARD
+                if (col > 0) {
+                    road = grid.getRoad(0, row, col - 1);
+                    dir = common::Direction::FORWARD;
+                }
+                break;
+        }
+
+        if (road) {
+            for (int slot = 0; slot < 30; ++slot) {
+                if (road->isSlotOccupied(slot, dir)) {
+                    ++count;
+                }
+            }
+        }
+
+        // Also count vehicles waiting at the adjacent square node, if this
+        // corner intersection has a square-node link in this direction.
+        // A vehicle sitting at a square node is approaching the corner.
+        common::Point square_node{-99, -99};
+        if (row == 0 && col == 0 && direction == 3) square_node = common::SQUARE_A;
+        else if (row == 2 && col == 0 && direction == 2) square_node = common::SQUARE_B;
+        else if (row == 2 && col == 2 && direction == 1) square_node = common::SQUARE_C;
+        else if (row == 0 && col == 2 && direction == 0) square_node = common::SQUARE_D;
+
+        if (square_node.x != -99) {
+            for (const auto& kv : grid.getVehicles()) {
+                if (kv.second.getPosition() == square_node) {
+                    ++count;
+                }
+            }
+        }
+
+        return count;
+    }
+
+    void InfrastructureAgent::congestionAwareStrategy() {
+        // Congestion-aware light switching: Longest-Queue-First with Starvation Prevention
+        //
+        // For each intersection:
+        //   1. Count vehicles approaching from each enabled direction
+        //   2. If any direction has been red >= MAX_RED_WAIT ticks, force green for it
+        //   3. Otherwise, give green to the direction with the most approaching vehicles
+        //   4. Ties broken by lowest direction index (deterministic in C++, nondeterministic in SPIN)
+
+        for (int row = 0; row < 3; ++row) {
+            for (int col = 0; col < 3; ++col) {
+                common::Intersection& intersection = grid.getIntersection(row, col);
+                int intersection_id = row * 3 + col;
+
+                // Collect enabled directions
+                std::vector<int> enabled_dirs;
+                for (int d = 0; d < 4; ++d) {
+                    if (intersection.isLightEnabled(d)) {
+                        enabled_dirs.push_back(d);
+                    }
+                }
+                if (enabled_dirs.empty()) continue;
+
+                // Step 1: Check starvation — any direction red too long?
+                int starved_dir = -1;
+                for (int d : enabled_dirs) {
+                    if (red_streak[intersection_id][d] >= MAX_RED_WAIT) {
+                        starved_dir = d;
+                        break;  // Give green to the first starved direction found
+                    }
+                }
+
+                int chosen_dir;
+                if (starved_dir >= 0) {
+                    // Starvation prevention: force green
+                    chosen_dir = starved_dir;
+                } else {
+                    // Step 2: Longest-queue-first
+                    int best_dir = enabled_dirs[0];
+                    int best_count = countApproachingVehicles(row, col, enabled_dirs[0]);
+
+                    for (size_t i = 1; i < enabled_dirs.size(); ++i) {
+                        int d = enabled_dirs[i];
+                        int cnt = countApproachingVehicles(row, col, d);
+                        if (cnt > best_count) {
+                            best_count = cnt;
+                            best_dir = d;
+                        }
+                    }
+                    chosen_dir = best_dir;
+                }
+
+                // Set the chosen direction green (setGreenLight sets all others red)
+                grid.setLight(row, col, chosen_dir, common::LightState::GREEN);
+
+                // Step 3: Update red streaks
+                for (int d : enabled_dirs) {
+                    if (d == chosen_dir) {
+                        red_streak[intersection_id][d] = 0;
+                    } else {
+                        red_streak[intersection_id][d]++;
+                    }
+                }
+            }
+        }
+    }
+
     void InfrastructureAgent::simpleCycleStrategy() {
-        // Read the shared Grid state and rotate the green light over the
-        // directions that are actually enabled at each intersection.
+        // Original fixed-cycle strategy (kept for reference/comparison)
         for (int row = 0; row < 3; ++row) {
             for (int col = 0; col < 3; ++col) {
                 common::Intersection& intersection = grid.getIntersection(row, col);
