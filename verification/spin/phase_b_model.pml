@@ -126,6 +126,8 @@ bool model_initialized = false;
 /* --- Tick synchronization --- */
 chan tick_infra     = [0] of { byte };
 chan done_infra     = [0] of { byte };
+chan tick_vehicle[NVEH] = [0] of { byte };
+chan done_vehicle[NVEH] = [0] of { byte };
 
 
 /* ================================================================
@@ -619,6 +621,164 @@ inline move_vehicle(vid) {
 
 
 /* ================================================================
+ * VehicleFSM — Independent proctype, one per vehicle
+ * Waits for tick, executes move logic (body of move_vehicle with vid
+ * substituted by the proctype parameter), then acks.
+ * ================================================================ */
+proctype VehicleFSM(byte vid) {
+    byte dummy;
+
+    do
+    :: tick_vehicle[vid] ? dummy ->
+        d_step {
+            byte cur_int, next_int, cur_slot;
+            byte out_dir, road_id, lane_dir, dest_int;
+            byte incoming, ri;
+            byte in_heading;
+
+            if
+            :: moved_this_step[vid] -> skip
+            :: (veh_route_idx[vid] >= veh_route_len[vid]) -> skip  /* route complete */
+            :: else ->
+
+                if
+                :: (veh_mode[vid] == 0) ->
+                    cur_int = veh_int[vid];
+                    ri = veh_route_idx[vid];
+                    next_int = veh_route[VR_IDX(vid, ri)];
+                    incoming = veh_heading[vid];
+
+                    out_dir = DIR_NONE;
+                    road_id = 255;
+                    lane_dir = FWD;
+
+                    if
+                    :: (cur_int == INT_00 && next_int == INT_01) ->
+                        out_dir = DIR_E; road_id = ROAD_H0; lane_dir = FWD
+                    :: (cur_int == INT_00 && next_int == INT_10) ->
+                        out_dir = DIR_S; road_id = ROAD_V0; lane_dir = FWD
+                    :: (cur_int == INT_01 && next_int == INT_00) ->
+                        out_dir = DIR_W; road_id = ROAD_H0; lane_dir = BWD
+                    :: (cur_int == INT_01 && next_int == INT_11) ->
+                        out_dir = DIR_S; road_id = ROAD_V1; lane_dir = FWD
+                    :: (cur_int == INT_10 && next_int == INT_00) ->
+                        out_dir = DIR_N; road_id = ROAD_V0; lane_dir = BWD
+                    :: (cur_int == INT_10 && next_int == INT_11) ->
+                        out_dir = DIR_E; road_id = ROAD_H1; lane_dir = FWD
+                    :: (cur_int == INT_11 && next_int == INT_01) ->
+                        out_dir = DIR_N; road_id = ROAD_V1; lane_dir = BWD
+                    :: (cur_int == INT_11 && next_int == INT_10) ->
+                        out_dir = DIR_W; road_id = ROAD_H1; lane_dir = BWD
+                    :: else -> out_dir = DIR_NONE
+                    fi;
+
+                    if
+                    :: (out_dir == DIR_NONE) -> skip
+                    :: else ->
+                        /* No-U-turn check */
+                        bool is_uturn = false;
+                        if
+                        :: (incoming != DIR_NONE &&
+                            ((incoming == DIR_N && out_dir == DIR_S) ||
+                             (incoming == DIR_S && out_dir == DIR_N) ||
+                             (incoming == DIR_E && out_dir == DIR_W) ||
+                             (incoming == DIR_W && out_dir == DIR_E))) ->
+                            is_uturn = true; uturn_violation = true
+                        :: else -> skip
+                        fi;
+
+                        if
+                        :: is_uturn -> skip
+                        :: (!is_uturn && light_green[cur_int] != out_dir) -> skip  /* red */
+                        :: (!is_uturn && light_green[cur_int] == out_dir
+                            && int_occupied[cur_int]) -> skip  /* occupied */
+                        :: (!is_uturn && light_green[cur_int] == out_dir
+                            && !int_occupied[cur_int]
+                            && GET_RS(road_id, lane_dir, 0) != 0) -> skip  /* slot full */
+                        :: (!is_uturn && light_green[cur_int] == out_dir
+                            && !int_occupied[cur_int]
+                            && GET_RS(road_id, lane_dir, 0) == 0) ->
+                            /* Move: intersection → road slot 0 */
+                            SET_RS(road_id, lane_dir, 0, vid + 1);
+                            veh_mode[vid] = 1;
+                            veh_road[vid] = road_id;
+                            veh_dir[vid] = lane_dir;
+                            veh_slot[vid] = 0;
+                            veh_heading[vid] = DIR_NONE;
+                            int_occupied[cur_int] = true;
+                            crossing_count[cur_int] = crossing_count[cur_int] + 1;
+                            moved_this_step[vid] = true
+                        fi
+                    fi
+
+                :: (veh_mode[vid] == 1) ->
+                    cur_slot = veh_slot[vid];
+
+                    if
+                    :: (cur_slot < SLOTN - 1) ->
+                        if
+                        :: (GET_RS(veh_road[vid], veh_dir[vid], cur_slot + 1) == 0) ->
+                            SET_RS(veh_road[vid], veh_dir[vid], cur_slot, 0);
+                            veh_slot[vid] = cur_slot + 1;
+                            SET_RS(veh_road[vid], veh_dir[vid], cur_slot + 1, vid + 1);
+                            moved_this_step[vid] = true
+                        :: else -> skip
+                        fi
+
+                    :: (cur_slot == SLOTN - 1) ->
+                        dest_int = 255;
+                        in_heading = DIR_NONE;
+
+                        if
+                        :: (veh_road[vid] == ROAD_H0 && veh_dir[vid] == FWD) ->
+                            dest_int = INT_01; in_heading = DIR_W
+                        :: (veh_road[vid] == ROAD_H0 && veh_dir[vid] == BWD) ->
+                            dest_int = INT_00; in_heading = DIR_E
+                        :: (veh_road[vid] == ROAD_H1 && veh_dir[vid] == FWD) ->
+                            dest_int = INT_11; in_heading = DIR_W
+                        :: (veh_road[vid] == ROAD_H1 && veh_dir[vid] == BWD) ->
+                            dest_int = INT_10; in_heading = DIR_E
+                        :: (veh_road[vid] == ROAD_V0 && veh_dir[vid] == FWD) ->
+                            dest_int = INT_10; in_heading = DIR_N
+                        :: (veh_road[vid] == ROAD_V0 && veh_dir[vid] == BWD) ->
+                            dest_int = INT_00; in_heading = DIR_S
+                        :: (veh_road[vid] == ROAD_V1 && veh_dir[vid] == FWD) ->
+                            dest_int = INT_11; in_heading = DIR_N
+                        :: (veh_road[vid] == ROAD_V1 && veh_dir[vid] == BWD) ->
+                            dest_int = INT_01; in_heading = DIR_S
+                        :: else -> dest_int = 255
+                        fi;
+
+                        if
+                        :: (dest_int == 255) -> skip
+                        :: (dest_int != 255 && int_occupied[dest_int]) -> skip
+                        :: (dest_int != 255 && !int_occupied[dest_int]) ->
+                            SET_RS(veh_road[vid], veh_dir[vid], cur_slot, 0);
+                            veh_mode[vid] = 0;
+                            veh_int[vid] = dest_int;
+                            veh_heading[vid] = in_heading;
+                            int_occupied[dest_int] = true;
+                            crossing_count[dest_int] = crossing_count[dest_int] + 1;
+                            moved_this_step[vid] = true;
+                            if
+                            :: (dest_int == veh_route[VR_IDX(vid, veh_route_idx[vid])]) ->
+                                veh_route_idx[vid] = veh_route_idx[vid] + 1
+                            :: else -> skip
+                            fi
+                        fi
+
+                    :: else -> skip
+                    fi
+                :: else -> skip
+                fi
+            fi
+        };
+        done_vehicle[vid] ! 0
+    od
+}
+
+
+/* ================================================================
  * ClockFSM
  * ================================================================ */
 init {
@@ -692,6 +852,8 @@ init {
     }
 
     run InfraFSM();
+    run VehicleFSM(0);
+    run VehicleFSM(1);
 
     /* Main tick loop */
     do
@@ -721,11 +883,13 @@ init {
         tick_infra ! 0;
         done_infra ? dummy;
 
-        /* Phase 2: Vehicles — called as inline within d_step to
-         * match C++ semantics (each vehicle processed atomically)
-         * and to control state space (no extra interleaving points). */
-        d_step { move_vehicle(0) };
-        d_step { move_vehicle(1) };
+        /* Phase 2: Vehicles — tick both VehicleFSM proctypes, then await acks.
+         * Sending both ticks before waiting for acks allows SPIN to explore
+         * interleavings between the two VehicleFSM processes. */
+        tick_vehicle[0] ! 0;
+        tick_vehicle[1] ! 0;
+        done_vehicle[0] ? dummy;
+        done_vehicle[1] ? dummy;
 
         /* Phase 2b: Post-move invariant checks (makes monitors non-vacuous) */
         d_step { check_invariants() };
