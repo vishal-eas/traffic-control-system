@@ -1,4 +1,4 @@
-# SPIN Verification Report: simple_test.pml
+~~# SPIN Verification Report: simple_test.pml
 
 **Model:** `verification/spin/simple_test.pml`
 **Tool:** SPIN 6.5.2 with Partial Order Reduction

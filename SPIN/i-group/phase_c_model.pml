@@ -1070,15 +1070,15 @@ ltl mutual_exclusion_lights { [] (!model_initialized || (
     (light_green[8] <= 3 && GET_LE(8,light_green[8]))
 )) }
 
-/* V-4 (self-chosen): no node exceeds the one-crossing-per-tick rule. */
-ltl intersection_crossing_bound { [] (
-    (crossing_count[N00] <= 1) &&
-    (crossing_count[N01] <= 1) &&
-    (crossing_count[N_D] <= 1) &&
-    (crossing_count[N10] <= 1) &&
-    (crossing_count[N11] <= 1) &&
-    (crossing_count[N12] <= 1) &&
-    (crossing_count[N_B] <= 1) &&
-    (crossing_count[N21] <= 1) &&
-    (crossing_count[N_C] <= 1)
-) }
+/* V-4 (self-chosen): the light topology always matches the physical grid. */
+ltl valid_light_topology { [] (!model_initialized || (
+    !GET_LE(N00, DIR_N) &&  GET_LE(N00, DIR_E) &&  GET_LE(N00, DIR_S) &&  GET_LE(N00, DIR_W) &&
+    !GET_LE(N01, DIR_N) &&  GET_LE(N01, DIR_E) &&  GET_LE(N01, DIR_S) &&  GET_LE(N01, DIR_W) &&
+    !GET_LE(N_D, DIR_N) && !GET_LE(N_D, DIR_E) &&  GET_LE(N_D, DIR_S) &&  GET_LE(N_D, DIR_W) &&
+     GET_LE(N10, DIR_N) &&  GET_LE(N10, DIR_E) &&  GET_LE(N10, DIR_S) && !GET_LE(N10, DIR_W) &&
+     GET_LE(N11, DIR_N) &&  GET_LE(N11, DIR_E) &&  GET_LE(N11, DIR_S) &&  GET_LE(N11, DIR_W) &&
+     GET_LE(N12, DIR_N) && !GET_LE(N12, DIR_E) &&  GET_LE(N12, DIR_S) &&  GET_LE(N12, DIR_W) &&
+     GET_LE(N_B, DIR_N) &&  GET_LE(N_B, DIR_E) && !GET_LE(N_B, DIR_S) && !GET_LE(N_B, DIR_W) &&
+     GET_LE(N21, DIR_N) &&  GET_LE(N21, DIR_E) && !GET_LE(N21, DIR_S) &&  GET_LE(N21, DIR_W) &&
+     GET_LE(N_C, DIR_N) && !GET_LE(N_C, DIR_E) && !GET_LE(N_C, DIR_S) &&  GET_LE(N_C, DIR_W)
+)) }

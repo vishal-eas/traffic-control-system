@@ -71,4 +71,15 @@ namespace common {
     void Intersection::resetStepOccupancy() {
         occupied_this_step = false;
     }
+
+    bool Intersection::isValidLightState() const {
+        // Spec: "At any time, at most 1 light can be green"
+        int green_count = 0;
+        for (int i = 0; i < 4; ++i) {
+            if (light_enabled[i] && traffic_lights[i].getState() == LightState::GREEN) {
+                ++green_count;
+            }
+        }
+        return green_count <= 1;
+    }
 }

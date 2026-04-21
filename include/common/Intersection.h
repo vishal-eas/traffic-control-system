@@ -22,6 +22,9 @@ namespace common {
         void setOccupiedThisStep(bool occupied);
         void resetStepOccupancy();
 
+        // Verify that at most 1 light is green (spec compliance check)
+        bool isValidLightState() const;
+
     private:
         // Every intersection has 4 traffic light slots (0-3)
         // Some may be disabled if not needed

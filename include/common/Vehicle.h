@@ -19,7 +19,7 @@ namespace common {
         // New: Detailed position tracking
         struct DetailedPosition {
             Point current_intersection;  // Which intersection area
-            int road_type;              // 0=horizontal, 1=vertical
+            int road_type;              // 0=horizontal, 1=vertical, 2=square-link
             int road_row;               // Row index of road
             int road_col;               // Column index of road
             int slot;                   // Which slot on road (0-29)

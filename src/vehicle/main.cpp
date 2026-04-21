@@ -26,16 +26,29 @@ static void printVehicleBrief(const common::Vehicle& v) {
     if (pos.at_intersection) {
         printPoint(v.getPosition());
     } else {
-        std::cout << (pos.road_type == 0 ? "H" : "V")
-                  << "[" << pos.road_row << "," << pos.road_col << "]"
-                  << (pos.direction == 0 ? "F" : "B")
-                  << "@" << pos.slot;
+        if (pos.road_type == 2) {
+            const common::Point square =
+                (pos.road_row == 0) ? common::SQUARE_A :
+                (pos.road_row == 1) ? common::SQUARE_B :
+                (pos.road_row == 2) ? common::SQUARE_C :
+                                      common::SQUARE_D;
+            std::cout << "SQ(";
+            printPoint(square);
+            std::cout << ")"
+                      << (pos.direction == 0 ? "F" : "B")
+                      << "@" << pos.slot;
+        } else {
+            std::cout << (pos.road_type == 0 ? "H" : "V")
+                      << "[" << pos.road_row << "," << pos.road_col << "]"
+                      << (pos.direction == 0 ? "F" : "B")
+                      << "@" << pos.slot;
+        }
     }
 }
 
 int main() {
     std::cout << "=========================================================\n";
-    std::cout << "  Vehicle Agent Demo — 3 Vehicles, Full Tour\n";
+    std::cout << "  Vehicle Agent Demo — 3 Vehicles, Continuous Tours\n";
     std::cout << "=========================================================\n\n";
 
     std::cout << "Grid layout:\n";
@@ -46,10 +59,8 @@ int main() {
     std::cout << "       B---O(2,0)---O(2,1)---O(2,2)---C\n\n";
 
     std::cout << "Each road has 30 slots (1 mile). Each time step = 2 seconds.\n";
-    std::cout << "Vehicles start at square node A, visit B, C, D, return to A.\n";
-    std::cout << "  V1 route: A -> B -> C -> D -> A\n";
-    std::cout << "  V2 route: A -> C -> B -> D -> A\n";
-    std::cout << "  V3 route: A -> D -> B -> C -> A\n\n";
+    std::cout << "Vehicles start at square node A and continuously repeat tours\n";
+    std::cout << "that visit B, C, D in some order before returning to A.\n\n";
 
     common::Grid grid;
     common::SimulationStats stats;
@@ -67,13 +78,13 @@ int main() {
     vehicle_agent.getVehicleById(3)->setRoute(
         {common::SQUARE_D, common::SQUARE_B, common::SQUARE_C, common::SQUARE_A});
 
-    // Track milestones: when a vehicle arrives at a square node
-    std::unordered_set<int> completed;
     // Last known square node per vehicle (to detect arrivals)
     common::Point last_square[3] = {common::SQUARE_A, common::SQUARE_A, common::SQUARE_A};
 
-    int total_steps = 1500;
+    // Run for one simulated hour.
+    int total_steps = 1800;
     int collision_check_total = 0;
+    int last_completed_tours = 0;
 
     std::cout << "--- Simulation Running (" << total_steps << " steps) ---\n\n";
 
@@ -96,14 +107,19 @@ int main() {
                 auto route = v->getRoute();
                 std::cout << "  T=" << std::setw(4) << t << "  V" << id
                           << " arrived at " << name;
-                if (route.empty() && pos == common::SQUARE_A && id >= 1) {
+                if (route.empty() && pos == common::SQUARE_A) {
                     std::cout << "  ** TOUR COMPLETE **";
-                    completed.insert(id);
                 } else {
                     std::cout << "  (remaining stops: " << route.size() << ")";
                 }
                 std::cout << "\n";
             }
+        }
+
+        if (stats.getCompletedTours() != last_completed_tours) {
+            std::cout << "  T=" << std::setw(4) << t
+                      << "  total completed tours = " << stats.getCompletedTours() << "\n";
+            last_completed_tours = stats.getCompletedTours();
         }
 
         // Print periodic snapshots every 100 steps
@@ -116,11 +132,6 @@ int main() {
             std::cout << "\n";
         }
 
-        // Early exit once all tours complete
-        if (completed.size() == 3) {
-            std::cout << "\n  All tours completed at T=" << t << ".\n";
-            break;
-        }
     }
 
     // ── Final Report ───────────────────────────────────────────────────
@@ -147,8 +158,8 @@ int main() {
     std::cout << "2. At each intersection, vehicles obey traffic lights (stop at RED).\n";
     std::cout << "3. At most 1 vehicle crosses any intersection per time step.\n";
     std::cout << "4. Infrastructure uses congestion-aware (longest-queue-first) switching\n";
-    std::cout << "   with starvation prevention (MAX_RED_WAIT=6).\n";
-    std::cout << "5. Each vehicle visits all 4 square nodes and returns to A.\n";
+    std::cout << "   with starvation prevention (MAX_RED_WAIT=4).\n";
+    std::cout << "5. Vehicles immediately begin a new tour after returning to A.\n";
     std::cout << "6. No collisions or red-light violations occur.\n";
 
     std::cout << "\n=========================================================\n";

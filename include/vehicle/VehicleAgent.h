@@ -4,6 +4,7 @@
 #include <vector>
 #include <unordered_map>
 #include <unordered_set>
+#include <optional>
 #include "common/Vehicle.h"
 #include "common/Grid.h"
 #include "common/SimulationStats.h"
@@ -38,7 +39,19 @@ namespace vehicle {
         // forbid taking this heading for the first exit from the corner intersection.
         std::unordered_map<int, int> post_square_forbidden_heading;
         // Vehicles whose completed tour has already been recorded (avoid double-count).
-        std::unordered_set<int> tours_recorded_;
+        std::unordered_map<int, int> completed_tours_by_vehicle_;
+        // Preferred repeating tour order of square nodes for each vehicle.
+        std::unordered_map<int, std::vector<common::Point>> tour_templates_;
+        // Per-vehicle simulation bookkeeping for travel/wait reporting.
+        std::unordered_map<int, int> vehicle_start_step_;
+        std::unordered_map<int, int> vehicle_wait_steps_;
+        
+        // Congestion tracking: number of stopping vehicles at each intersection
+        std::unordered_map<common::Point, int> congestion_map_;
+        // Vehicles that moved this step
+        std::unordered_set<int> moved_this_step_;
+        // Vehicles that have been assigned initial routes
+        std::unordered_set<int> assigned_routes_;
         
         // Decision making
         void updateRoutePlanning();
@@ -48,10 +61,27 @@ namespace vehicle {
             int vehicle_id,
             const common::Point& start,
             const common::Point& goal) const;
+        int estimateTravelCost(
+            int vehicle_id,
+            const common::Point& start,
+            const common::Point& goal) const;
+        std::vector<common::Point> extractRemainingSquareGoals(
+            const std::vector<common::Point>& route) const;
+        std::vector<common::Point> extractSquareGoals(
+            const std::vector<common::Point>& route) const;
+        std::vector<common::Point> defaultTourTemplateForVehicle(int vehicle_id) const;
+        void captureTourTemplateIfNeeded(int vehicle_id, const std::vector<common::Point>& route);
         int getIncomingHeadingAtIntersection(int vehicle_id) const;
         void setIncomingHeadingAtIntersection(int vehicle_id, int heading);
         int getPostSquareForbiddenHeading(int vehicle_id) const;
         void clearPostSquareForbiddenHeading(int vehicle_id);
+        bool hasVehicleAheadWithinVisibility(
+            int vehicle_id,
+            int road_type,
+            int row,
+            int col,
+            int current_slot,
+            common::Direction dir) const;
     };
 }
 

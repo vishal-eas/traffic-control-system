@@ -24,7 +24,7 @@ namespace infrastructure {
         // Direction index: 0=North, 1=East, 2=South, 3=West
         std::array<std::array<int, 4>, 9> red_streak;  // [intersection_id][direction]
 
-        static constexpr int MAX_RED_WAIT = 6;
+        static constexpr int MAX_RED_WAIT = 4;
 
         // Light control strategies
         void simpleCycleStrategy();
@@ -32,6 +32,7 @@ namespace infrastructure {
 
         // Count vehicles approaching an intersection from a given direction
         int countApproachingVehicles(int row, int col, int direction) const;
+        int approachPriorityScore(int row, int col, int direction) const;
     };
 }
 

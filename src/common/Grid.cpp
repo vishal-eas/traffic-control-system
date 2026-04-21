@@ -3,6 +3,10 @@
 
 namespace common {
     Grid::Grid() {
+        for (auto& road : square_roads) {
+            road.setSlotCount(2);
+        }
+
         // Disable lights for directions where no road exists
         // Light indices: 0=North, 1=East, 2=South, 3=West
         for (int row = 0; row < 3; ++row) {
@@ -115,6 +119,8 @@ namespace common {
             return &horizontal_roads[row][col];
         } else if (road_type == 1 && row >= 0 && row < 2 && col >= 0 && col < 3) {
             return &vertical_roads[row][col];
+        } else if (road_type == 2 && row >= 0 && row < 4) {
+            return &square_roads[row];
         }
         return nullptr;
     }
@@ -124,6 +130,8 @@ namespace common {
             return &horizontal_roads[row][col];
         } else if (road_type == 1 && row >= 0 && row < 2 && col >= 0 && col < 3) {
             return &vertical_roads[row][col];
+        } else if (road_type == 2 && row >= 0 && row < 4) {
+            return &square_roads[row];
         }
         return nullptr;
     }
@@ -281,5 +289,37 @@ namespace common {
             if (entry.second > 1) collisions += (entry.second - 1);
         }
         return collisions;
+    }
+
+    int Grid::countStoppingVehicles(int row, int col) const {
+        // Count vehicles at this intersection that are not moving
+        // (vehicles that stayed at this intersection during the last step)
+        if (row < 0 || row >= 3 || col < 0 || col >= 3) return 0;
+        
+        int count = 0;
+        common::Point intersection_point{row, col};
+        
+        for (const auto& kv : vehicles) {
+            const common::Vehicle& v = kv.second;
+            if (v.getPosition() == intersection_point) {
+                // Vehicle is at this intersection
+                // In a full implementation, we'd check if it moved last step
+                // For now, assume vehicles at intersections waiting for green are "stopping"
+                count++;
+            }
+        }
+        return count;
+    }
+
+    bool Grid::verifyLightConstraints() const {
+        // Spec: "At any time, at most 1 light can be green"
+        for (int row = 0; row < 3; ++row) {
+            for (int col = 0; col < 3; ++col) {
+                if (!intersections[row][col].isValidLightState()) {
+                    return false;  // More than 1 green light detected
+                }
+            }
+        }
+        return true;
     }
 }  // namespace common

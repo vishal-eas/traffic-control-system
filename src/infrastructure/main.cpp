@@ -81,7 +81,7 @@ int main() {
     // ── Part 2: Empty-grid behavior (starvation cycling) ──────────────
     std::cout << "\n--- Demo 1: Empty Grid — Starvation Prevention ---\n";
     std::cout << "With no vehicles, all queues are 0. Lowest-index enabled\n";
-    std::cout << "direction wins by tie-break. After MAX_RED_WAIT=6 ticks,\n";
+    std::cout << "direction wins by tie-break. After MAX_RED_WAIT=4 ticks,\n";
     std::cout << "starved directions get forced green.\n";
     std::cout << "Format: [N E S W] where G=green R=red -=disabled\n\n";
 

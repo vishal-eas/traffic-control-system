@@ -59,6 +59,13 @@ namespace common {
         // by more than one vehicle — should be 0 if movement logic is correct.
         int detectCollisions() const;
 
+        // Count vehicles that are stopped (at intersections and didn't move last step)
+        // This is used for congestion-aware light control
+        int countStoppingVehicles(int row, int col) const;
+
+        // Verify spec constraints at this step
+        bool verifyLightConstraints() const;  // At most 1 green per intersection
+
     private:
         // 3x3 grid of intersections
         std::array<std::array<common::Intersection,3>,3> intersections;
@@ -66,7 +73,7 @@ namespace common {
         std::array<std::array<common::Road,2>,3> horizontal_roads;  // [row][col]: 3 rows, 2 cols
         std::array<std::array<common::Road,3>,2> vertical_roads;  // [row][col]: 2 rows, 3 cols
 
-        // Square node roads (1-slot roads connecting A,B,C,D to grid corners)
+        // Square node roads (2-slot roads connecting A,B,C,D to grid corners)
         // Index: 0=A, 1=B, 2=C, 3=D
         std::array<common::Road, 4> square_roads;
 

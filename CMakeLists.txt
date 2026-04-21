@@ -31,6 +31,15 @@ add_executable(vehicle_sim
 target_include_directories(vehicle_sim PUBLIC include)
 target_link_libraries(vehicle_sim common)
 
+# Throughput benchmark executable
+add_executable(throughput_bench
+    src/throughput/main.cpp
+    src/vehicle/VehicleAgent.cpp
+    src/infrastructure/InfrastructureAgent.cpp
+)
+target_include_directories(throughput_bench PUBLIC include)
+target_link_libraries(throughput_bench common)
+
 # Tests
 enable_testing()
 

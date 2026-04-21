@@ -63,7 +63,7 @@ namespace infrastructure {
         }
 
         if (road) {
-            for (int slot = 0; slot < 30; ++slot) {
+            for (int slot = 0; slot < road->slotCount(); ++slot) {
                 if (road->isSlotOccupied(slot, dir)) {
                     ++count;
                 }
@@ -80,14 +80,110 @@ namespace infrastructure {
         else if (row == 0 && col == 2 && direction == 0) square_node = common::SQUARE_D;
 
         if (square_node.x != -99) {
+            const int square_index =
+                (square_node == common::SQUARE_A) ? 0 :
+                (square_node == common::SQUARE_B) ? 1 :
+                (square_node == common::SQUARE_C) ? 2 : 3;
+
             for (const auto& kv : grid.getVehicles()) {
                 if (kv.second.getPosition() == square_node) {
                     ++count;
                 }
             }
+
+            const common::Road* square_road = grid.getRoad(2, square_index, 0);
+            if (square_road) {
+                for (int slot = 0; slot < square_road->slotCount(); ++slot) {
+                    if (square_road->isSlotOccupied(slot, common::Direction::BACKWARD)) {
+                        ++count;
+                    }
+                }
+            }
         }
 
         return count;
+    }
+
+    int InfrastructureAgent::approachPriorityScore(int row, int col, int direction) const {
+        int score = 0;
+        const common::Road* road = nullptr;
+        common::Direction dir = common::Direction::FORWARD;
+
+        switch (direction) {
+            case 0:
+                if (row > 0) {
+                    road = grid.getRoad(1, row - 1, col);
+                    dir = common::Direction::FORWARD;
+                }
+                break;
+            case 1:
+                if (col < 2) {
+                    road = grid.getRoad(0, row, col);
+                    dir = common::Direction::BACKWARD;
+                }
+                break;
+            case 2:
+                if (row < 2) {
+                    road = grid.getRoad(1, row, col);
+                    dir = common::Direction::BACKWARD;
+                }
+                break;
+            case 3:
+                if (col > 0) {
+                    road = grid.getRoad(0, row, col - 1);
+                    dir = common::Direction::FORWARD;
+                }
+                break;
+        }
+
+        if (road) {
+            const int last_slot = road->slotCount() - 1;
+            for (int slot = 0; slot < road->slotCount(); ++slot) {
+                if (!road->isSlotOccupied(slot, dir)) {
+                    continue;
+                }
+
+                score += 1;
+                if (slot >= last_slot - 2) {
+                    score += 8;
+                } else if (slot >= last_slot - 5) {
+                    score += 4;
+                } else {
+                    score += slot / 8;
+                }
+            }
+        }
+
+        common::Point square_node{-99, -99};
+        if (row == 0 && col == 0 && direction == 3) square_node = common::SQUARE_A;
+        else if (row == 2 && col == 0 && direction == 2) square_node = common::SQUARE_B;
+        else if (row == 2 && col == 2 && direction == 1) square_node = common::SQUARE_C;
+        else if (row == 0 && col == 2 && direction == 0) square_node = common::SQUARE_D;
+
+        if (square_node.x != -99) {
+            const int square_index =
+                (square_node == common::SQUARE_A) ? 0 :
+                (square_node == common::SQUARE_B) ? 1 :
+                (square_node == common::SQUARE_C) ? 2 : 3;
+
+            for (const auto& kv : grid.getVehicles()) {
+                if (kv.second.getPosition() == square_node) {
+                    score += 10;
+                }
+            }
+
+            const common::Road* square_road = grid.getRoad(2, square_index, 0);
+            if (square_road) {
+                for (int slot = 0; slot < square_road->slotCount(); ++slot) {
+                    if (!square_road->isSlotOccupied(slot, common::Direction::BACKWARD)) {
+                        continue;
+                    }
+                    score += 12 + (slot * 2);
+                }
+            }
+        }
+
+        return score;
     }
 
     void InfrastructureAgent::congestionAwareStrategy() {
@@ -122,24 +218,36 @@ namespace infrastructure {
                     }
                 }
 
+                std::array<int, 4> priority{};
+                for (int d : enabled_dirs) {
+                    priority[d] = approachPriorityScore(row, col, d);
+                }
+
                 int chosen_dir;
                 if (starved_dir >= 0) {
                     // Starvation prevention: force green
                     chosen_dir = starved_dir;
                 } else {
-                    // Step 2: Longest-queue-first
+                    // Step 2: Pressure-aware selection with a small amount of green holding.
                     int best_dir = enabled_dirs[0];
-                    int best_count = countApproachingVehicles(row, col, enabled_dirs[0]);
+                    int best_count = priority[enabled_dirs[0]];
 
                     for (size_t i = 1; i < enabled_dirs.size(); ++i) {
                         int d = enabled_dirs[i];
-                        int cnt = countApproachingVehicles(row, col, d);
+                        int cnt = priority[d];
                         if (cnt > best_count) {
                             best_count = cnt;
                             best_dir = d;
                         }
                     }
-                    chosen_dir = best_dir;
+
+                    int current_green = intersection.getGreenLight();
+                    if (current_green >= 0 && intersection.isLightEnabled(current_green) &&
+                        priority[current_green] > 0 && priority[current_green] + 3 >= best_count) {
+                        chosen_dir = current_green;
+                    } else {
+                        chosen_dir = best_dir;
+                    }
                 }
 
                 // Set the chosen direction green (setGreenLight sets all others red)
