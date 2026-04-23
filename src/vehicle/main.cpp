@@ -8,9 +8,9 @@
 
 static const char* pointName(const common::Point& p) {
     if (p == common::SQUARE_A) return "A";
-    if (p == common::SQUARE_B) return "B";
-    if (p == common::SQUARE_C) return "C";
-    if (p == common::SQUARE_D) return "D";
+    if (p == common::N_B) return "B";
+    if (p == common::N_C) return "C";
+    if (p == common::N_D) return "D";
     return nullptr;
 }
 
@@ -27,14 +27,7 @@ static void printVehicleBrief(const common::Vehicle& v) {
         printPoint(v.getPosition());
     } else {
         if (pos.road_type == 2) {
-            const common::Point square =
-                (pos.road_row == 0) ? common::SQUARE_A :
-                (pos.road_row == 1) ? common::SQUARE_B :
-                (pos.road_row == 2) ? common::SQUARE_C :
-                                      common::SQUARE_D;
-            std::cout << "SQ(";
-            printPoint(square);
-            std::cout << ")"
+            std::cout << "SQ(A)"
                       << (pos.direction == 0 ? "F" : "B")
                       << "@" << pos.slot;
         } else {
@@ -52,11 +45,11 @@ int main() {
     std::cout << "=========================================================\n\n";
 
     std::cout << "Grid layout:\n";
-    std::cout << "       A---O(0,0)---O(0,1)---O(0,2)---D\n";
-    std::cout << "            |        |        |\n";
-    std::cout << "           O(1,0)---O(1,1)---O(1,2)\n";
-    std::cout << "            |        |        |\n";
-    std::cout << "       B---O(2,0)---O(2,1)---O(2,2)---C\n\n";
+    std::cout << "  A---O(0,0)---O(0,1)---D(0,2)\n";
+    std::cout << "       |        |        |\n";
+    std::cout << "      O(1,0)---O(1,1)---O(1,2)\n";
+    std::cout << "       |        |        |\n";
+    std::cout << "      B(2,0)---O(2,1)---C(2,2)\n\n";
 
     std::cout << "Each road has 30 slots (1 mile). Each time step = 2 seconds.\n";
     std::cout << "Vehicles start at square node A and continuously repeat tours\n";
@@ -72,13 +65,13 @@ int main() {
     vehicle_agent.addVehicle(3, common::SQUARE_A);
 
     vehicle_agent.getVehicleById(1)->setRoute(
-        {common::SQUARE_B, common::SQUARE_C, common::SQUARE_D, common::SQUARE_A});
+        {common::N_B, common::N_C, common::N_D, common::SQUARE_A});
     vehicle_agent.getVehicleById(2)->setRoute(
-        {common::SQUARE_C, common::SQUARE_B, common::SQUARE_D, common::SQUARE_A});
+        {common::N_C, common::N_B, common::N_D, common::SQUARE_A});
     vehicle_agent.getVehicleById(3)->setRoute(
-        {common::SQUARE_D, common::SQUARE_B, common::SQUARE_C, common::SQUARE_A});
+        {common::N_D, common::N_B, common::N_C, common::SQUARE_A});
 
-    // Last known square node per vehicle (to detect arrivals)
+    // Last known tour destination per vehicle (to detect arrivals)
     common::Point last_square[3] = {common::SQUARE_A, common::SQUARE_A, common::SQUARE_A};
 
     // Run for one simulated hour.

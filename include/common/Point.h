@@ -20,13 +20,13 @@ namespace common {
         }
     };
 
-    // Square node constants (corner placement)
-    // A = west of (0,0), B = south of (2,0), C = east of (2,2), D = north of (0,2)
-    // These coordinates remain distinct from the 3x3 intersection grid.
+    // Square node: only A is a square node (west of corner (0,0)).
     inline constexpr Point SQUARE_A{0, -1};
-    inline constexpr Point SQUARE_B{3, 0};
-    inline constexpr Point SQUARE_C{2, 3};
-    inline constexpr Point SQUARE_D{-1, 2};
+
+    // B, C, D are ordinary corner intersections on the 3x3 grid.
+    inline constexpr Point N_B{2, 0};
+    inline constexpr Point N_C{2, 2};
+    inline constexpr Point N_D{0, 2};
 }
 
 // Hash function for Point (needed for unordered containers)

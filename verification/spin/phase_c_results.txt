@@ -1,0 +1,19 @@
+
+================================================================
+  Phase C SPIN Verification — 2026-04-20 21:19:58
+  Model  : phase_c_model.pml
+  Method : bitstate hashing (-DBITSTATE), depth 2000000
+================================================================
+
+Property                        Result  Errors        Depth           States            Memory      Time
+-------------------------------  ------  ------------  --------------  ----------------  ----------  ------
+no_collision                    PASS    errors: 0     depth=612005    states=3e+06       mem=421.371MB  time=25s
+
+================================================================
+  Throughput note:
+  SPIN simulation (MAX_TICKS steps, 2 vehicles) reports total_tours
+  completed within the bounded window. Run:
+    spin -l phase_c_model.pml | grep total_tours
+  C++ simulation reference: 75 tours/hour (1800 steps, 2 vehicles)
+================================================================
+ 

@@ -70,28 +70,14 @@ namespace infrastructure {
             }
         }
 
-        // Also count vehicles waiting at the adjacent square node, if this
-        // corner intersection has a square-node link in this direction.
-        // A vehicle sitting at a square node is approaching the corner.
-        common::Point square_node{-99, -99};
-        if (row == 0 && col == 0 && direction == 3) square_node = common::SQUARE_A;
-        else if (row == 2 && col == 0 && direction == 2) square_node = common::SQUARE_B;
-        else if (row == 2 && col == 2 && direction == 1) square_node = common::SQUARE_C;
-        else if (row == 0 && col == 2 && direction == 0) square_node = common::SQUARE_D;
-
-        if (square_node.x != -99) {
-            const int square_index =
-                (square_node == common::SQUARE_A) ? 0 :
-                (square_node == common::SQUARE_B) ? 1 :
-                (square_node == common::SQUARE_C) ? 2 : 3;
-
+        // Count vehicles waiting at SQUARE_A, which approach (0,0) from West.
+        if (row == 0 && col == 0 && direction == 3) {
             for (const auto& kv : grid.getVehicles()) {
-                if (kv.second.getPosition() == square_node) {
+                if (kv.second.getPosition() == common::SQUARE_A) {
                     ++count;
                 }
             }
-
-            const common::Road* square_road = grid.getRoad(2, square_index, 0);
+            const common::Road* square_road = grid.getRoad(2, 0, 0);
             if (square_road) {
                 for (int slot = 0; slot < square_road->slotCount(); ++slot) {
                     if (square_road->isSlotOccupied(slot, common::Direction::BACKWARD)) {
@@ -154,31 +140,19 @@ namespace infrastructure {
             }
         }
 
-        common::Point square_node{-99, -99};
-        if (row == 0 && col == 0 && direction == 3) square_node = common::SQUARE_A;
-        else if (row == 2 && col == 0 && direction == 2) square_node = common::SQUARE_B;
-        else if (row == 2 && col == 2 && direction == 1) square_node = common::SQUARE_C;
-        else if (row == 0 && col == 2 && direction == 0) square_node = common::SQUARE_D;
-
-        if (square_node.x != -99) {
-            const int square_index =
-                (square_node == common::SQUARE_A) ? 0 :
-                (square_node == common::SQUARE_B) ? 1 :
-                (square_node == common::SQUARE_C) ? 2 : 3;
-
+        // Count SQUARE_A vehicles approaching (0,0) from West.
+        if (row == 0 && col == 0 && direction == 3) {
             for (const auto& kv : grid.getVehicles()) {
-                if (kv.second.getPosition() == square_node) {
+                if (kv.second.getPosition() == common::SQUARE_A) {
                     score += 10;
                 }
             }
-
-            const common::Road* square_road = grid.getRoad(2, square_index, 0);
+            const common::Road* square_road = grid.getRoad(2, 0, 0);
             if (square_road) {
                 for (int slot = 0; slot < square_road->slotCount(); ++slot) {
-                    if (!square_road->isSlotOccupied(slot, common::Direction::BACKWARD)) {
-                        continue;
+                    if (square_road->isSlotOccupied(slot, common::Direction::BACKWARD)) {
+                        score += 12 + (slot * 2);
                     }
-                    score += 12 + (slot * 2);
                 }
             }
         }

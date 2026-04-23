@@ -3,9 +3,7 @@
 
 namespace common {
     Grid::Grid() {
-        for (auto& road : square_roads) {
-            road.setSlotCount(2);
-        }
+        square_road_a.setSlotCount(2);
 
         // Disable lights for directions where no road exists
         // Light indices: 0=North, 1=East, 2=South, 3=West
@@ -18,15 +16,9 @@ namespace common {
             }
         }
 
-        // Re-enable lights toward square nodes at corner intersections
-        // A is west of (0,0): enable West light at (0,0)
+        // Re-enable West light at (0,0) toward SQUARE_A
         intersections[0][0].enableLight(3);
-        // B is south of (2,0): enable South light at (2,0)
-        intersections[2][0].enableLight(2);
-        // C is east of (2,2): enable East light at (2,2)
-        intersections[2][2].enableLight(1);
-        // D is north of (0,2): enable North light at (0,2)
-        intersections[0][2].enableLight(0);
+        // B=(2,0), C=(2,2), D=(0,2) are ordinary corner intersections — no extra lights needed.
     }
 
     common::Intersection& Grid::getIntersection(int row, int col) {
@@ -47,16 +39,7 @@ namespace common {
     }
 
     bool Grid::isSquareNode(const common::Point& point) const {
-        return point == SQUARE_A || point == SQUARE_B ||
-               point == SQUARE_C || point == SQUARE_D;
-    }
-
-    int Grid::getSquareNodeIndex(const common::Point& point) const {
-        if (point == SQUARE_A) return 0;
-        if (point == SQUARE_B) return 1;
-        if (point == SQUARE_C) return 2;
-        if (point == SQUARE_D) return 3;
-        return -1;
+        return point == SQUARE_A;
     }
 
     bool Grid::addVehicle(const common::Vehicle& vehicle) {
@@ -119,8 +102,8 @@ namespace common {
             return &horizontal_roads[row][col];
         } else if (road_type == 1 && row >= 0 && row < 2 && col >= 0 && col < 3) {
             return &vertical_roads[row][col];
-        } else if (road_type == 2 && row >= 0 && row < 4) {
-            return &square_roads[row];
+        } else if (road_type == 2 && row == 0) {
+            return &square_road_a;
         }
         return nullptr;
     }
@@ -130,20 +113,18 @@ namespace common {
             return &horizontal_roads[row][col];
         } else if (road_type == 1 && row >= 0 && row < 2 && col >= 0 && col < 3) {
             return &vertical_roads[row][col];
-        } else if (road_type == 2 && row >= 0 && row < 4) {
-            return &square_roads[row];
+        } else if (road_type == 2 && row == 0) {
+            return &square_road_a;
         }
         return nullptr;
     }
 
-    common::Road* Grid::getSquareNodeRoad(int index) {
-        if (index >= 0 && index < 4) return &square_roads[index];
-        return nullptr;
+    common::Road* Grid::getSquareNodeRoad() {
+        return &square_road_a;
     }
 
-    const common::Road* Grid::getSquareNodeRoad(int index) const {
-        if (index >= 0 && index < 4) return &square_roads[index];
-        return nullptr;
+    const common::Road* Grid::getSquareNodeRoad() const {
+        return &square_road_a;
     }
 
     bool Grid::isRoadSlotOccupied(int road_type, int row, int col, int slot, Direction dir) const {

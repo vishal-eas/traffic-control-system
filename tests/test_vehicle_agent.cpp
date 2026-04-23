@@ -30,12 +30,8 @@ static void runSteps(int n, InfrastructureAgent& infra, VehicleAgent& va) {
     for (int i = 0; i < n; ++i) runStep(infra, va);
 }
 
-static int squareIndex(const Point& p) {
-    if (p == common::SQUARE_A) return 0;
-    if (p == common::SQUARE_B) return 1;
-    if (p == common::SQUARE_C) return 2;
-    if (p == common::SQUARE_D) return 3;
-    return -1;
+static bool isTourDestination(const Point& p) {
+    return p == common::SQUARE_A || p == common::N_B || p == common::N_C || p == common::N_D;
 }
 
 static void pass(const std::string& name) {
@@ -43,7 +39,7 @@ static void pass(const std::string& name) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Test 1 (original): single vehicle reaches one square goal
+// Test 1: single vehicle reaches corner intersection N_B
 // ─────────────────────────────────────────────────────────────────────────────
 static void test_single_vehicle_reaches_goal() {
     Grid grid;
@@ -51,7 +47,7 @@ static void test_single_vehicle_reaches_goal() {
     InfrastructureAgent infra(grid);
 
     va.addVehicle(1, common::SQUARE_A);
-    va.getVehicleById(1)->setRoute({common::SQUARE_B});
+    va.getVehicleById(1)->setRoute({common::N_B});
 
     bool moved_onto_road = false;
     bool reached_goal    = false;
@@ -63,19 +59,19 @@ static void test_single_vehicle_reaches_goal() {
         assert(v && "Vehicle must remain in grid.");
 
         if (!v->getDetailedPosition().at_intersection) moved_onto_road = true;
-        if (v->getPosition() == common::SQUARE_B && v->getRoute().empty()) {
+        if (v->getPosition() == common::N_B && v->getRoute().empty()) {
             reached_goal = true;
             break;
         }
     }
 
     assert(moved_onto_road && "Vehicle must enter a road slot.");
-    assert(reached_goal    && "Vehicle must reach SQUARE_B.");
+    assert(reached_goal    && "Vehicle must reach N_B.");
     pass("single_vehicle_reaches_goal");
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Test 2 (original): 3-vehicle full tour, all visit every square node
+// Test 2: 3-vehicle full tour, all visit every destination
 // ─────────────────────────────────────────────────────────────────────────────
 static void test_three_vehicle_full_tour() {
     Grid grid;
@@ -87,19 +83,27 @@ static void test_three_vehicle_full_tour() {
     va.addVehicle(2, common::SQUARE_A);
     va.addVehicle(3, common::SQUARE_A);
 
-    va.getVehicleById(1)->setRoute({common::SQUARE_B, common::SQUARE_C, common::SQUARE_D, common::SQUARE_A});
-    va.getVehicleById(2)->setRoute({common::SQUARE_C, common::SQUARE_B, common::SQUARE_D, common::SQUARE_A});
-    va.getVehicleById(3)->setRoute({common::SQUARE_D, common::SQUARE_B, common::SQUARE_C, common::SQUARE_A});
+    va.getVehicleById(1)->setRoute({common::N_B, common::N_C, common::N_D, common::SQUARE_A});
+    va.getVehicleById(2)->setRoute({common::N_C, common::N_B, common::N_D, common::SQUARE_A});
+    va.getVehicleById(3)->setRoute({common::N_D, common::N_B, common::N_C, common::SQUARE_A});
 
     std::array<std::array<bool,4>,3> visited{};
     for (auto& row : visited) row.fill(false);
+
+    auto destIndex = [](const Point& p) -> int {
+        if (p == common::SQUARE_A) return 0;
+        if (p == common::N_B) return 1;
+        if (p == common::N_C) return 2;
+        if (p == common::N_D) return 3;
+        return -1;
+    };
 
     bool all_completed_once = false;
     for (int step = 0; step < 1500; ++step) {
         runStep(infra, va);
         for (int id = 1; id <= 3; ++id) {
-            int sq = squareIndex(va.getVehicleById(id)->getPosition());
-            if (sq >= 0) visited[id-1][sq] = true;
+            int idx = destIndex(va.getVehicleById(id)->getPosition());
+            if (idx >= 0) visited[id-1][idx] = true;
         }
         if (stats.getCompletedTours() >= 3) {
             all_completed_once = true;
@@ -109,8 +113,8 @@ static void test_three_vehicle_full_tour() {
 
     assert(all_completed_once && "All three vehicles must complete at least one full tour.");
     for (int id = 1; id <= 3; ++id) {
-        for (int sq = 0; sq < 4; ++sq)
-            assert(visited[id-1][sq] && "Must visit all four square nodes.");
+        for (int idx = 0; idx < 4; ++idx)
+            assert(visited[id-1][idx] && "Must visit all four destinations.");
     }
     pass("three_vehicle_full_tour");
 }
@@ -128,9 +132,9 @@ static void test_no_collisions_during_full_run() {
     va.addVehicle(2, common::SQUARE_A);
     va.addVehicle(3, common::SQUARE_A);
 
-    va.getVehicleById(1)->setRoute({common::SQUARE_B, common::SQUARE_C, common::SQUARE_D, common::SQUARE_A});
-    va.getVehicleById(2)->setRoute({common::SQUARE_C, common::SQUARE_B, common::SQUARE_D, common::SQUARE_A});
-    va.getVehicleById(3)->setRoute({common::SQUARE_D, common::SQUARE_B, common::SQUARE_C, common::SQUARE_A});
+    va.getVehicleById(1)->setRoute({common::N_B, common::N_C, common::N_D, common::SQUARE_A});
+    va.getVehicleById(2)->setRoute({common::N_C, common::N_B, common::N_D, common::SQUARE_A});
+    va.getVehicleById(3)->setRoute({common::N_D, common::N_B, common::N_C, common::SQUARE_A});
 
     for (int step = 0; step < 1500; ++step) {
         runStep(infra, va);
@@ -155,9 +159,9 @@ static void test_simulation_stats_accuracy() {
     va.addVehicle(2, common::SQUARE_A);
     va.addVehicle(3, common::SQUARE_A);
 
-    va.getVehicleById(1)->setRoute({common::SQUARE_B, common::SQUARE_C, common::SQUARE_D, common::SQUARE_A});
-    va.getVehicleById(2)->setRoute({common::SQUARE_C, common::SQUARE_B, common::SQUARE_D, common::SQUARE_A});
-    va.getVehicleById(3)->setRoute({common::SQUARE_D, common::SQUARE_B, common::SQUARE_C, common::SQUARE_A});
+    va.getVehicleById(1)->setRoute({common::N_B, common::N_C, common::N_D, common::SQUARE_A});
+    va.getVehicleById(2)->setRoute({common::N_C, common::N_B, common::N_D, common::SQUARE_A});
+    va.getVehicleById(3)->setRoute({common::N_D, common::N_B, common::N_C, common::SQUARE_A});
 
     for (int step = 0; step < 1500; ++step) runStep(infra, va);
 
@@ -286,25 +290,32 @@ static void test_convoy_following_and_blocking() {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Test 7: square nodes remain distinct from intersections and use 2-slot links
+// Test 7: only SQUARE_A is a square node; B/C/D are plain intersections;
+//         SQUARE_A link road has 2 slots
 // ─────────────────────────────────────────────────────────────────────────────
-static void test_square_nodes_are_distinct_and_linked() {
+static void test_square_a_only_and_linked() {
     Grid grid;
     VehicleAgent va(grid);
     InfrastructureAgent infra(grid);
 
-    assert(!grid.isIntersection(common::SQUARE_A));
-    assert(!grid.isIntersection(common::SQUARE_B));
-    assert(!grid.isIntersection(common::SQUARE_C));
-    assert(!grid.isIntersection(common::SQUARE_D));
+    // Only SQUARE_A is a square node
+    assert( grid.isSquareNode(common::SQUARE_A) && "SQUARE_A must be a square node.");
+    assert(!grid.isSquareNode(common::N_B)      && "N_B must NOT be a square node.");
+    assert(!grid.isSquareNode(common::N_C)      && "N_C must NOT be a square node.");
+    assert(!grid.isSquareNode(common::N_D)      && "N_D must NOT be a square node.");
 
-    for (int i = 0; i < 4; ++i) {
-        const auto* road = grid.getSquareNodeRoad(i);
-        assert(road && road->slotCount() == 2 && "Each square link must be modeled as a 2-slot road.");
-    }
+    // B/C/D are valid intersections
+    assert( grid.isIntersection(common::N_B) && "N_B must be a grid intersection.");
+    assert( grid.isIntersection(common::N_C) && "N_C must be a grid intersection.");
+    assert( grid.isIntersection(common::N_D) && "N_D must be a grid intersection.");
 
+    // SQUARE_A link road exists and has 2 slots
+    const auto* road = grid.getSquareNodeRoad();
+    assert(road && road->slotCount() == 2 && "SQUARE_A link must be a 2-slot road.");
+
+    // A vehicle can drive from SQUARE_A to N_B (a plain intersection)
     va.addVehicle(1, common::SQUARE_A);
-    va.getVehicleById(1)->setRoute({common::SQUARE_B});
+    va.getVehicleById(1)->setRoute({common::N_B});
 
     bool used_square_link = false;
     bool reached_b = false;
@@ -315,17 +326,17 @@ static void test_square_nodes_are_distinct_and_linked() {
         auto pos = v->getDetailedPosition();
         if (!pos.at_intersection && pos.road_type == 2) {
             used_square_link = true;
-            assert((pos.slot == 0 || pos.slot == 1) && "Square-link roads must use one of the 2 square-link slots.");
+            assert((pos.slot == 0 || pos.slot == 1) && "Square-link road must use one of 2 slots.");
         }
-        if (v->getPosition() == common::SQUARE_B && v->getRoute().empty()) {
+        if (v->getPosition() == common::N_B && v->getRoute().empty()) {
             reached_b = true;
             break;
         }
     }
 
-    assert(used_square_link && "Vehicle should traverse a square-link road when leaving/entering a square node.");
-    assert(reached_b && "Vehicle must reach square node B.");
-    pass("square_nodes_are_distinct_and_linked");
+    assert(used_square_link && "Vehicle should traverse the SQUARE_A link road on departure.");
+    assert(reached_b && "Vehicle must reach N_B (corner intersection).");
+    pass("square_a_only_and_linked");
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -427,7 +438,7 @@ static void test_vehicle_always_at_valid_position() {
     InfrastructureAgent infra(grid);
 
     va.addVehicle(1, common::SQUARE_A);
-    va.getVehicleById(1)->setRoute({common::SQUARE_B, common::SQUARE_C, common::SQUARE_D, common::SQUARE_A});
+    va.getVehicleById(1)->setRoute({common::N_B, common::N_C, common::N_D, common::SQUARE_A});
 
     for (int step = 0; step < 1500; ++step) {
         runStep(infra, va);
@@ -460,12 +471,12 @@ static void test_vehicle_always_at_valid_position() {
 static void test_all_tour_permutations() {
     // The 6 orderings of visiting B, C, D before returning to A.
     const std::vector<std::vector<Point>> permutations = {
-        {common::SQUARE_B, common::SQUARE_C, common::SQUARE_D, common::SQUARE_A},
-        {common::SQUARE_B, common::SQUARE_D, common::SQUARE_C, common::SQUARE_A},
-        {common::SQUARE_C, common::SQUARE_B, common::SQUARE_D, common::SQUARE_A},
-        {common::SQUARE_C, common::SQUARE_D, common::SQUARE_B, common::SQUARE_A},
-        {common::SQUARE_D, common::SQUARE_B, common::SQUARE_C, common::SQUARE_A},
-        {common::SQUARE_D, common::SQUARE_C, common::SQUARE_B, common::SQUARE_A},
+        {common::N_B, common::N_C, common::N_D, common::SQUARE_A},
+        {common::N_B, common::N_D, common::N_C, common::SQUARE_A},
+        {common::N_C, common::N_B, common::N_D, common::SQUARE_A},
+        {common::N_C, common::N_D, common::N_B, common::SQUARE_A},
+        {common::N_D, common::N_B, common::N_C, common::SQUARE_A},
+        {common::N_D, common::N_C, common::N_B, common::SQUARE_A},
     };
 
     for (size_t i = 0; i < permutations.size(); ++i) {
@@ -535,7 +546,7 @@ static void test_vehicle_reuses_configured_tour_template() {
 
     va.addVehicle(1, common::SQUARE_A);
     va.getVehicleById(1)->setRoute(
-        {common::SQUARE_D, common::SQUARE_C, common::SQUARE_B, common::SQUARE_A});
+        {common::N_D, common::N_C, common::N_B, common::SQUARE_A});
 
     bool completed_first_tour = false;
     bool saw_second_tour_depart_for_d = false;
@@ -552,8 +563,8 @@ static void test_vehicle_reuses_configured_tour_template() {
         if (completed_first_tour && v->getPosition() == Point{0, 0}) {
             const auto route = v->getRoute();
             for (const auto& waypoint : route) {
-                if (squareIndex(waypoint) >= 0) {
-                    if (waypoint == common::SQUARE_D) {
+                if (isTourDestination(waypoint)) {
+                    if (waypoint == common::N_D) {
                         saw_second_tour_depart_for_d = true;
                     }
                     break;
@@ -565,7 +576,7 @@ static void test_vehicle_reuses_configured_tour_template() {
 
     assert(completed_first_tour && "Vehicle should complete its first configured tour.");
     assert(saw_second_tour_depart_for_d &&
-           "Vehicle should start its next tour using the same configured square-node order.");
+           "Vehicle should start its next tour using the same configured destination order.");
     pass("vehicle_reuses_configured_tour_template");
 }
 
@@ -581,7 +592,7 @@ int main() {
     test_simulation_stats_accuracy();
     test_vehicle_stops_at_red_light();
     test_convoy_following_and_blocking();
-    test_square_nodes_are_distinct_and_linked();
+    test_square_a_only_and_linked();
     test_opposite_direction_no_collision();
     test_road_traversal_takes_30_steps();
     test_intersection_crossing_constraint();

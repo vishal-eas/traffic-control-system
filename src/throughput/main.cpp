@@ -15,22 +15,22 @@ namespace {
 
     std::vector<Point> routeForIndex(int vehicle_index, const std::string& mode) {
         static const std::vector<std::vector<Point>> kMixedRoutes = {
-            {common::SQUARE_B, common::SQUARE_C, common::SQUARE_D, common::SQUARE_A},
-            {common::SQUARE_C, common::SQUARE_B, common::SQUARE_D, common::SQUARE_A},
-            {common::SQUARE_D, common::SQUARE_B, common::SQUARE_C, common::SQUARE_A},
-            {common::SQUARE_B, common::SQUARE_D, common::SQUARE_C, common::SQUARE_A},
-            {common::SQUARE_C, common::SQUARE_D, common::SQUARE_B, common::SQUARE_A},
-            {common::SQUARE_D, common::SQUARE_C, common::SQUARE_B, common::SQUARE_A},
+            {common::N_B, common::N_C, common::N_D, common::SQUARE_A},
+            {common::N_C, common::N_B, common::N_D, common::SQUARE_A},
+            {common::N_D, common::N_B, common::N_C, common::SQUARE_A},
+            {common::N_B, common::N_D, common::N_C, common::SQUARE_A},
+            {common::N_C, common::N_D, common::N_B, common::SQUARE_A},
+            {common::N_D, common::N_C, common::N_B, common::SQUARE_A},
         };
 
         if (mode == "perimeter") {
-            return {common::SQUARE_D, common::SQUARE_C, common::SQUARE_B, common::SQUARE_A};
+            return {common::N_D, common::N_C, common::N_B, common::SQUARE_A};
         }
         if (mode == "balanced") {
             if ((vehicle_index % 2) == 0) {
-                return {common::SQUARE_B, common::SQUARE_C, common::SQUARE_D, common::SQUARE_A};
+                return {common::N_B, common::N_C, common::N_D, common::SQUARE_A};
             }
-            return {common::SQUARE_D, common::SQUARE_C, common::SQUARE_B, common::SQUARE_A};
+            return {common::N_D, common::N_C, common::N_B, common::SQUARE_A};
         }
 
         return kMixedRoutes[vehicle_index % static_cast<int>(kMixedRoutes.size())];
