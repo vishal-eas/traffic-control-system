@@ -43,33 +43,21 @@ namespace {
 
     int headingFromSquareToIntersection(const common::Point& square) {
         if (square == common::SQUARE_A) return HEADING_EAST;
-        if (square == common::SQUARE_B) return HEADING_NORTH;
-        if (square == common::SQUARE_C) return HEADING_WEST;
-        if (square == common::SQUARE_D) return HEADING_SOUTH;
         return HEADING_UNKNOWN;
     }
 
     int headingFromIntersectionToSquare(const common::Point& square) {
         if (square == common::SQUARE_A) return HEADING_WEST;
-        if (square == common::SQUARE_B) return HEADING_SOUTH;
-        if (square == common::SQUARE_C) return HEADING_EAST;
-        if (square == common::SQUARE_D) return HEADING_NORTH;
         return HEADING_UNKNOWN;
     }
 
     int squareRoadIndex(const common::Point& square) {
         if (square == common::SQUARE_A) return 0;
-        if (square == common::SQUARE_B) return 1;
-        if (square == common::SQUARE_C) return 2;
-        if (square == common::SQUARE_D) return 3;
         return -1;
     }
 
     common::Point adjacentIntersectionForSquare(const common::Point& square) {
         if (square == common::SQUARE_A) return {0, 0};
-        if (square == common::SQUARE_B) return {2, 0};
-        if (square == common::SQUARE_C) return {2, 2};
-        if (square == common::SQUARE_D) return {0, 2};
         return {-999, -999};
     }
 
@@ -81,14 +69,8 @@ namespace {
         return std::find(points.begin(), points.end(), target) != points.end();
     }
 
-    common::Point firstSquareInRoute(const std::vector<common::Point>& route) {
-        for (const auto& point : route) {
-            if (point == common::SQUARE_A || point == common::SQUARE_B ||
-                point == common::SQUARE_C || point == common::SQUARE_D) {
-                return point;
-            }
-        }
-        return {-999, -999};
+    bool isTourDestination(const common::Point& p) {
+        return p == common::SQUARE_A || p == common::N_B || p == common::N_C || p == common::N_D;
     }
 
     std::vector<std::pair<common::Point, int>> outgoingNeighbors(const common::Point& node) {
@@ -101,11 +83,8 @@ namespace {
             if (node.x < 2) neighbors.push_back({{node.x + 1, node.y}, HEADING_SOUTH});
             if (node.y > 0) neighbors.push_back({{node.x, node.y - 1}, HEADING_WEST});
 
-            // Corner square-node links
+            // SQUARE_A link: only (0,0) connects westward to the square node
             if (node == common::Point{0, 0}) neighbors.push_back({common::SQUARE_A, HEADING_WEST});
-            if (node == common::Point{2, 0}) neighbors.push_back({common::SQUARE_B, HEADING_SOUTH});
-            if (node == common::Point{2, 2}) neighbors.push_back({common::SQUARE_C, HEADING_EAST});
-            if (node == common::Point{0, 2}) neighbors.push_back({common::SQUARE_D, HEADING_NORTH});
 
             return neighbors;
         }
@@ -204,14 +183,14 @@ namespace vehicle {
 
             common::Point goal = route.front();
 
-            // Route planning targets are square nodes (hardcoded per vehicle).
-            // If route front is already an intersection waypoint, keep it.
-            if (!grid.isSquareNode(goal)) continue;
+            // Route planning targets are tour destinations (SQUARE_A, N_B, N_C, N_D).
+            // If route front is already an intermediate intersection waypoint, keep it.
+            if (!isTourDestination(goal)) continue;
             if (current == goal) continue;
 
-            // If already at the corner intersection adjacent to this square,
-            // movement can directly attempt the square transition.
-            if (grid.isIntersection(current) && isAdjacentIntersectionForSquare(current, goal)) {
+            // If goal is SQUARE_A and we're at the adjacent corner, let movement handle it.
+            if (grid.isSquareNode(goal) && grid.isIntersection(current) &&
+                isAdjacentIntersectionForSquare(current, goal)) {
                 continue;
             }
 
@@ -418,7 +397,7 @@ namespace vehicle {
         const std::vector<common::Point>& route) const {
         std::vector<common::Point> goals;
         for (const auto& point : route) {
-            if (grid.isSquareNode(point) && !containsPoint(goals, point)) {
+            if (isTourDestination(point) && !containsPoint(goals, point)) {
                 goals.push_back(point);
             }
         }
@@ -427,9 +406,9 @@ namespace vehicle {
 
     std::vector<common::Point> VehicleAgent::defaultTourTemplateForVehicle(int vehicle_id) const {
         if ((vehicle_id % 2) == 0) {
-            return {common::SQUARE_D, common::SQUARE_C, common::SQUARE_B, common::SQUARE_A};
+            return {common::N_D, common::N_C, common::N_B, common::SQUARE_A};
         }
-        return {common::SQUARE_B, common::SQUARE_C, common::SQUARE_D, common::SQUARE_A};
+        return {common::N_B, common::N_C, common::N_D, common::SQUARE_A};
     }
 
     void VehicleAgent::captureTourTemplateIfNeeded(
@@ -439,9 +418,9 @@ namespace vehicle {
             return;
         }
 
-        const std::vector<common::Point> square_goals = extractSquareGoals(route);
-        if (square_goals.size() == 4 && square_goals.back() == common::SQUARE_A) {
-            tour_templates_[vehicle_id] = square_goals;
+        const std::vector<common::Point> tour_goals = extractSquareGoals(route);
+        if (tour_goals.size() == 4 && tour_goals.back() == common::SQUARE_A) {
+            tour_templates_[vehicle_id] = tour_goals;
         }
     }
 
@@ -515,6 +494,7 @@ namespace vehicle {
                 road_row = square_index;
                 dir = common::Direction::BACKWARD;
             } else if (grid.isSquareNode(next)) {
+                // Only SQUARE_A is a square node; vehicle enters from (0,0) westward.
                 if (!isAdjacentIntersectionForSquare(current, next)) {
                     continue;
                 }
@@ -531,21 +511,10 @@ namespace vehicle {
                 }
 
                 road_type = 2;
-                road_row = squareRoadIndex(next);
+                road_row = 0; // SQUARE_A is index 0
                 dir = common::Direction::FORWARD;
                 requires_green = true;
-
-                if (next == common::SQUARE_A) {
-                    light_index = 3;
-                } else if (next == common::SQUARE_B) {
-                    light_index = 2;
-                } else if (next == common::SQUARE_C) {
-                    light_index = 1;
-                } else if (next == common::SQUARE_D) {
-                    light_index = 0;
-                } else {
-                    continue;
-                }
+                light_index = 3; // West light at (0,0)
             } else {
                 if (current.y == next.y && current.x != next.x) {
                     road_type = 1;
@@ -672,18 +641,13 @@ namespace vehicle {
                                     }
                                     incoming_heading = headingFromRoadDirection(road_type, dir);
                                 } else {
-                                    const common::Point square =
-                                        (row == 0) ? common::SQUARE_A :
-                                        (row == 1) ? common::SQUARE_B :
-                                        (row == 2) ? common::SQUARE_C :
-                                                     common::SQUARE_D;
-
+                                    // road_type == 2: only SQUARE_A road (row == 0)
                                     if (dir == common::Direction::FORWARD) {
-                                        destination = square;
+                                        destination = common::SQUARE_A;
                                         destination_is_intersection = false;
                                     } else {
-                                        destination = adjacentIntersectionForSquare(square);
-                                        incoming_heading = headingFromSquareToIntersection(square);
+                                        destination = adjacentIntersectionForSquare(common::SQUARE_A);
+                                        incoming_heading = headingFromSquareToIntersection(common::SQUARE_A);
                                     }
                                 }
 
@@ -707,6 +671,7 @@ namespace vehicle {
                                         route.erase(route.begin());
                                         grid.setRoute(vehicle_id, route);
 
+                                        // Tour complete: returned to SQUARE_A with empty route.
                                         if (stats_ && destination == common::SQUARE_A && route.empty()) {
                                             stats_->recordCompletedTour();
                                             stats_->recordTravelTime(

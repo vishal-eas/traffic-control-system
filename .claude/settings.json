@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(./pan -m200000 -a -N no_collision)",
+      "Bash(cmake --build . -j4)",
+      "Bash(./infrastructure_sim)",
+      "Bash(spin -a simple_test.pml)",
+      "Bash(cc -O2 -o pan_simple pan.c)",
+      "Bash(cc -O2 -o pan pan.c)",
+      "Bash(./pan -m500000 -a)",
+      "Bash(./pan -m500000 -a -N no_collision)",
+      "Bash(./pan -m500000 -a -N no_red_violation)",
+      "Bash(./pan -m500000 -a -N no_uturn)",
+      "Bash(./pan -m500000 -a -N eventual_completion)",
+      "Bash(./pan -m500000 -a -N mutual_exclusion_lights)"
+    ]
+  }
+}

@@ -56,13 +56,13 @@ int main() {
 
     // ── Part 1: Grid Topology ──────────────────────────────────────────
     std::cout << "--- Grid Topology ---\n";
-    std::cout << "3x3 grid of intersections + 4 square nodes (A, B, C, D).\n";
+    std::cout << "3x3 grid of intersections + 1 square node (A only).\n";
     std::cout << "Each intersection has lights only for directions with roads.\n\n";
-    std::cout << "       A---O(0,0)---O(0,1)---O(0,2)---D\n";
-    std::cout << "            |        |        |\n";
-    std::cout << "           O(1,0)---O(1,1)---O(1,2)\n";
-    std::cout << "            |        |        |\n";
-    std::cout << "       B---O(2,0)---O(2,1)---O(2,2)---C\n\n";
+    std::cout << "  A---O(0,0)---O(0,1)---D(0,2)\n";
+    std::cout << "       |        |        |\n";
+    std::cout << "      O(1,0)---O(1,1)---O(1,2)\n";
+    std::cout << "       |        |        |\n";
+    std::cout << "      B(2,0)---O(2,1)---C(2,2)\n\n";
 
     Grid grid;
     std::cout << "Enabled lights per intersection:\n";
@@ -122,7 +122,7 @@ int main() {
     std::cout << " (West wins — longest queue)\n";
 
     // ── Part 4: Square-node congestion ─────────────────────────────────
-    std::cout << "\n--- Demo 3: Square-Node Congestion at Corners ---\n";
+    std::cout << "\n--- Demo 3: Square-Node Congestion at SQUARE_A ---\n";
     std::cout << "Place 2 vehicles at SQUARE_A (west of (0,0)).\n";
     std::cout << "The agent counts them as approaching (0,0) from West.\n\n";
 

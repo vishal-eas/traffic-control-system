@@ -29,10 +29,9 @@ namespace common {
         common::Road* getRoad(int road_type, int row, int col);
         const common::Road* getRoad(int road_type, int row, int col) const;
 
-        // Square node roads (index: 0=A, 1=B, 2=C, 3=D)
-        common::Road* getSquareNodeRoad(int index);
-        const common::Road* getSquareNodeRoad(int index) const;
-        int getSquareNodeIndex(const common::Point& point) const;
+        // Square node road (only A)
+        common::Road* getSquareNodeRoad();
+        const common::Road* getSquareNodeRoad() const;
 
         // Route management
         void setRoute(int vehicle_id, const std::vector<common::Point>& route);
@@ -73,9 +72,8 @@ namespace common {
         std::array<std::array<common::Road,2>,3> horizontal_roads;  // [row][col]: 3 rows, 2 cols
         std::array<std::array<common::Road,3>,2> vertical_roads;  // [row][col]: 2 rows, 3 cols
 
-        // Square node roads (2-slot roads connecting A,B,C,D to grid corners)
-        // Index: 0=A, 1=B, 2=C, 3=D
-        std::array<common::Road, 4> square_roads;
+        // Square node road (only A, connecting SQUARE_A to corner (0,0))
+        common::Road square_road_a;
 
         // Vehicle registry (shared state)
         std::unordered_map<int, common::Vehicle> vehicles;
