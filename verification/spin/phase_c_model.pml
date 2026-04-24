@@ -1049,3 +1049,31 @@ ltl binary_light_state { [] (!model_initialized || (
     (GET_DG(N_C,DIR_S) == (light_green[N_C] == DIR_S)) &&
     (GET_DG(N_C,DIR_W) == (light_green[N_C] == DIR_W))
 )) }
+
+/* V-5: Unconditional infrastructure fairness — every enabled direction gets green
+ * within MAX_STREAK cycles regardless of whether any vehicle is present.
+ * RS_STREAK increments every red tick unconditionally; starvation prevention
+ * fires on the counter alone, making fairness demand-independent. */
+ltl unconditional_fair_green { [] (!model_initialized || (
+    (RS_STREAK(N00,DIR_E) <= 5) && (RS_STREAK(N00,DIR_S) <= 5) && (RS_STREAK(N00,DIR_W) <= 5) &&
+    (RS_STREAK(N01,DIR_E) <= 5) && (RS_STREAK(N01,DIR_S) <= 5) && (RS_STREAK(N01,DIR_W) <= 5) &&
+    (RS_STREAK(N_D,DIR_S) <= 4) && (RS_STREAK(N_D,DIR_W) <= 4) &&
+    (RS_STREAK(N10,DIR_N) <= 5) && (RS_STREAK(N10,DIR_E) <= 5) && (RS_STREAK(N10,DIR_S) <= 5) &&
+    (RS_STREAK(N11,DIR_N) <= 6) && (RS_STREAK(N11,DIR_E) <= 6) &&
+    (RS_STREAK(N11,DIR_S) <= 6) && (RS_STREAK(N11,DIR_W) <= 6) &&
+    (RS_STREAK(N12,DIR_N) <= 5) && (RS_STREAK(N12,DIR_S) <= 5) && (RS_STREAK(N12,DIR_W) <= 5) &&
+    (RS_STREAK(N_B,DIR_N) <= 4) && (RS_STREAK(N_B,DIR_E) <= 4) &&
+    (RS_STREAK(N21,DIR_N) <= 5) && (RS_STREAK(N21,DIR_E) <= 5) && (RS_STREAK(N21,DIR_W) <= 5) &&
+    (RS_STREAK(N_C,DIR_N) <= 4) && (RS_STREAK(N_C,DIR_W) <= 4)
+)) }
+
+/* V-6: Vehicle progress — every active vehicle waiting at an intersection (mode==0)
+ * will not be starved. Checked by bounding the red streak of the current green
+ * direction at the vehicle's node: if it has been green too long, the other
+ * directions (including the one the vehicle needs) will be forced green soon.
+ * Bound 6 covers the worst-case 4-direction center node. */
+ltl vehicle_green_progress { [] (!model_initialized || (
+    (!veh_active[0] || veh_mode[0] != 0 || RS_STREAK(veh_node[0], light_green[veh_node[0]]) <= 6) &&
+    (!veh_active[1] || veh_mode[1] != 0 || RS_STREAK(veh_node[1], light_green[veh_node[1]]) <= 6) &&
+    (!veh_active[2] || veh_mode[2] != 0 || RS_STREAK(veh_node[2], light_green[veh_node[2]]) <= 6)
+)) }

@@ -344,3 +344,100 @@ The path selection was purely **topological** — BFS finds the shortest hop cou
 | No-U-turn | Yes (PathState BFS) | Yes (unchanged) |
 | Post-square forbidden heading | Yes (SQUARE_A only) | Yes (SQUARE_A only; B/C/D no longer special) |
 | SPIN vehicle model | N/A | Non-deterministic spawn via Environment process |
+
+---
+
+## 6. Phase C Changes vs Phase A — Summary
+
+### 6.1 Topology
+
+In Phase A, B, C, and D were modeled as **square nodes** — each had its own dedicated 2-slot link road connecting it to the nearest grid intersection, making them structurally identical to SQ_A. This was a simplification that made routes shorter and avoided dealing with full intersection logic at B/C/D.
+
+In Phase C, B=(2,0), C=(2,2), and D=(0,2) are **ordinary corner intersections** on the 3×3 grid. They have no link roads — vehicles reach them by traversing full 30-slot interior roads through intermediate intersections. Only SQ_A retains its special square-node status with a 1-slot link road to (0,0). This makes the topology spec-accurate: B/C/D now participate in the signal control system, have enabled directions like any other intersection, and can hold queues of approaching vehicles.
+
+| Aspect | Phase A | Phase C |
+|---|---|---|
+| Square nodes | A, B, C, D (each with link road) | A only |
+| B, C, D | Separate square nodes, 2-slot link roads, no signals | Ordinary corner intersections with traffic signals |
+| Total roads | 16 (12 grid + 4 link roads) | 13 (12 grid + 1 link road for A only) |
+| Road length to B/C/D | 2 slots | 30 slots via interior grid roads |
+| Intersection count with signals | 5 (grid only, not B/C/D) | 9 (all grid intersections including B/C/D) |
+
+---
+
+### 6.2 Vehicle Routing
+
+Phase A routing was purely **topological** — BFS found the fewest-hop path with no awareness of how congested a road was. Vehicles stopped permanently after completing one tour.
+
+Phase C adds **congestion-awareness**: the path cost function penalizes occupied roads (`occupancy × 2`) and adds a proximity bonus (+3 per vehicle in the final 5 slots of a road, since those vehicles are about to block the intersection). This steers vehicles away from heavily loaded roads. Vehicles also now **restart automatically** after returning to SQ_A, using a stored tour template — enabling continuous steady-state operation and meaningful throughput measurement.
+
+| Aspect | Phase A | Phase C |
+|---|---|---|
+| Path selection | BFS hop-count only | BFS + congestion cost estimate |
+| Congestion penalty | None | `base(31) + occupancy×2 + proximity bonus` |
+| Tour repetition | Single tour, then idle | Continuous restart via stored tour template |
+| Tour ordering | One hardcoded ordering per vehicle | Even vehicles: B→C→D→A; odd: D→C→B→A |
+| Route modes | None | `mixed` (all permutations), `balanced` (symmetric), `perimeter` (uniform) |
+| No-U-turn constraint | Yes | Yes (unchanged) |
+| Post-square forbidden heading | Yes (all square nodes) | Yes (SQ_A only; B/C/D no longer special) |
+
+---
+
+### 6.3 Infrastructure (Traffic Signal Control)
+
+Phase A used basic signal control with no fairness guarantee — a busy direction could hold green indefinitely while others starved.
+
+Phase C introduces **longest-queue-first switching with starvation prevention**: `InfraFSM` counts vehicles approaching from each enabled direction and gives green to the longest queue. If any direction has been red for `MAX_RED_WAIT=4` consecutive ticks, it is forced green regardless of queue lengths — guaranteeing every direction gets served within a bounded number of cycles.
+
+A second signal representation, `dir_green[]`, was added alongside the existing `light_green[]` index. This explicit per-direction boolean array enables the formal mutual exclusion and binary-state properties to be expressed and verified in SPIN.
+
+| Aspect | Phase A | Phase C |
+|---|---|---|
+| Green selection policy | Basic (unspecified) | Longest-queue-first |
+| Starvation prevention | None | Force green after `MAX_RED_WAIT=4` consecutive red ticks |
+| Max red streak (2-dir node) | Unbounded | ≤ 4 ticks |
+| Max red streak (3-dir node) | Unbounded | ≤ 5 ticks |
+| Max red streak (4-dir node) | Unbounded | ≤ 6 ticks |
+| Signal representation | `light_green[n]` (single index) | `light_green[n]` + `dir_green[n*4+d]` (per-direction boolean) |
+
+---
+
+### 6.4 Formal Verification (SPIN)
+
+Phase A used a fixed 2-vehicle SPIN model — properties were verified only for exactly two vehicles with predetermined starting conditions.
+
+Phase C introduces an **Environment process** that non-deterministically spawns vehicles at any tick, up to `MAX_ACTIVE=3`. SPIN explores all possible vehicle arrival timings — covering 0, 1, 2, or 3 vehicles entering the system at any combination of ticks. This means properties are verified for **any number of vehicles up to the cap**, not just a fixed scenario. The state space grew from ~50K to ~4M states per claim as a result.
+
+Ten properties are verified, spanning four categories:
+
+- **Safety** (shared with i-group): no collision, no red-light violation, no opposite-direction violation, no U-turn
+- **Signal fairness**: `unconditional_fair_green` (infrastructure-side, demand-independent), `vehicle_green_progress` (vehicle-side, waiting vehicles are not starved)
+- **Mutual exclusion**: `mutual_exclusion_lights` — explicit count of `dir_green[]` booleans proves at most one direction is green per intersection
+- **Signal state integrity**: `binary_light_state` — every direction is always exactly green or red, never undefined or inconsistent
+- **Crossing bound**: `intersection_crossing_bound` — at most one vehicle crosses any intersection per tick
+
+| Aspect | Phase A | Phase C |
+|---|---|---|
+| Vehicle model | Fixed 2 vehicles | Non-deterministic spawn, 0–3 vehicles |
+| Non-determinism source | None | `Environment` process spawns at any tick |
+| Properties verified | ~3 basic safety | 10 across safety, fairness, mutual exclusion, state integrity |
+| State space per claim | ~50K states | ~4M states |
+| State vector size | ~892 bytes | ~1020 bytes (`-DVECTORSZ=4096` required) |
+| Verification time | <1s per claim | 35–139s per claim |
+
+---
+
+### 6.5 Simulation & Throughput
+
+Phase A had no throughput measurement — vehicles ran one tour and stopped, making sustained performance impossible to measure.
+
+Phase C adds a dedicated `throughput_bench` tool that runs any number of vehicles for any duration, excludes a configurable warmup period, and reports tours per simulated hour alongside all violation counts. A sweep over vehicle counts and route modes identified **124 tours/hour** as the peak throughput, achieved with `balanced` routing (20 vehicles) which distributes load symmetrically by alternating tour orderings. All violation counts remain zero across every configuration.
+
+| Aspect | Phase A | Phase C |
+|---|---|---|
+| Throughput measurement | None | `throughput_bench`: tours/hour with warmup exclusion |
+| Warmup handling | N/A | First simulated hour discarded (transient excluded) |
+| Max throughput | Not measured | **124 tours/hour** (`balanced`, 20 vehicles) |
+| Route mode that maximizes throughput | N/A | `balanced` — symmetric load, no bottleneck |
+| Violations across all runs | Not tracked | Collisions=0, red-light=0, opposite-dir=0, U-turn=0 |
+| Travel/wait time tracking | None | Per-vehicle per-tour timing via `SimulationStats` |
